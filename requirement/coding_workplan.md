@@ -11,6 +11,13 @@
 - **Project Management**: Dedicated project manager to coordinate with stakeholders
 - **Development Approach**: Backend and frontend teams will work in parallel with regular integration points
 
+## Importnat reminder
+- You will always maintain a checklist of tasks to complete for the current module in /requirement/current_module.md at the start of the module development
+- You will always update the current_module doc before you start working on a file
+- You will always update the current_module doc for tasks / files that are completed
+- You will always pick up from where you left off and continue to ensure the coding is consistent
+- You will clear out the current_module doc when the module is completely coded and tested
+
 ## Module 1: User Management
 - [ ] Finalize user roles and permissions design (dependency: finalized requirements)
 - [ ] Design admin portal UI for user creation, management, and activity monitoring
