@@ -77,87 +77,42 @@ The backend API will be available at http://localhost:8000/
 3. Set up environment variables:
    ```bash
    # Create a .env file in the frontend directory
-   echo "REACT_APP_API_URL=http://localhost:8000/api
-   REACT_APP_JWT_STORAGE_KEY=broker_pdf_filler_jwt" > .env
+   echo "NEXT_PUBLIC_API_URL=http://localhost:8000/api
+   NEXT_PUBLIC_JWT_STORAGE_KEY=broker_pdf_filler_jwt" > .env
    ```
 
-4. Start the development server:
+4. Build the frontend application:
+   ```bash
+   npm run build
+   ```
+
+5. Start the production server:
    ```bash
    npm start
    ```
 
-The frontend application will be available at http://localhost:3000/
-
-## Running Tests
-
-### Backend Tests
-
-1. Ensure you're in the backend directory with the virtual environment activated:
+   Or for development with hot reloading:
    ```bash
-   cd backend
-   source ../venv/bin/activate  # For Unix/macOS
+   npm run dev
    ```
 
-2. Run all tests:
-   ```bash
-   python manage.py test
-   ```
+The frontend application will be available at:
+- Development: http://localhost:3000
+- Production: http://localhost:3000
 
-3. Run specific test modules:
-   ```bash
-   # Run dashboard tests
-   python manage.py test broker_pdf_filler.dashboard.tests
+## Testing the Application
 
-   # Run authentication tests
-   python manage.py test broker_pdf_filler.authentication.tests
-   ```
-
-### Frontend Tests
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Run all tests:
-   ```bash
-   npm test
-   ```
-
-3. Run tests with coverage:
-   ```bash
-   npm test -- --coverage
-   ```
-
-## Common Issues and Solutions
-
-1. **Database Connection Issues**
-   - Ensure PostgreSQL is running
-   - Check database credentials in settings.py
-   - Verify database exists and user has proper permissions
-
-2. **CORS Issues**
-   - Verify CORS settings in backend/settings.py
-   - Check frontend API URL configuration
-   - Ensure both servers are running on the correct ports
-
-3. **JWT Authentication Issues**
-   - Check JWT secret keys match in frontend and backend
-   - Verify token expiration settings
-   - Clear browser storage and try again
-
-## Development Workflow
-
-1. Start both servers:
+1. Start both servers in separate terminals:
    ```bash
    # Terminal 1 (Backend)
    cd backend
-   source venv/bin/activate
+   source ../venv/bin/activate  # For Unix/macOS
    python manage.py runserver
 
    # Terminal 2 (Frontend)
    cd frontend
-   npm start
+   npm run build  # Only needed for first run or after changes
+   npm start      # Or 'npm run dev' for development
    ```
 
 2. Access the application:
@@ -166,8 +121,53 @@ The frontend application will be available at http://localhost:3000/
    - API Documentation: http://localhost:8000/swagger/
 
 3. Default test credentials:
-   - Email: test@example.com
-   - Password: testpass123
+   ```
+   Email: test@example.com
+   Password: testpass123
+   ```
+
+## Common Issues and Solutions
+
+1. **Frontend Build Errors**
+   - Clear the `.next` directory and node_modules:
+     ```bash
+     cd frontend
+     rm -rf .next node_modules package-lock.json
+     npm install
+     npm run build
+     ```
+
+2. **Backend Authentication Issues**
+   - Verify JWT secret keys match in frontend and backend
+   - Check CORS settings in backend/settings.py
+   - Clear browser storage and try again
+
+3. **Database Connection Issues**
+   - Ensure PostgreSQL is running
+   - Check database credentials in settings.py
+   - Verify database exists and user has proper permissions
+
+## Development Workflow
+
+1. Backend Development:
+   ```bash
+   cd backend
+   source ../venv/bin/activate
+   python manage.py runserver
+   ```
+
+2. Frontend Development:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. Building for Production:
+   ```bash
+   cd frontend
+   npm run build
+   npm start
+   ```
 
 ## Code Quality Checks
 
@@ -184,17 +184,6 @@ The frontend application will be available at http://localhost:3000/
    npm run lint
    npm run format
    ```
-
-## Monitoring and Debugging
-
-1. Backend logs:
-   - Check Django development server output
-   - Review logs in backend/logs/
-
-2. Frontend debugging:
-   - Use React Developer Tools
-   - Check browser console for errors
-   - Use the Network tab to monitor API calls
 
 ## Support
 
