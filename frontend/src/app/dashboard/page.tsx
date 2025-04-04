@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from "next/image";
+import { Dashboard } from '@/components/dashboard/Dashboard';
 
-export default function Home() {
+export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
@@ -12,10 +12,12 @@ export default function Home() {
     const token = localStorage.getItem('token');
     if (!token) {
       router.push('/login');
-    } else {
-      router.push('/dashboard');
     }
   }, [router]);
 
-  return null; // No need to render anything as we're redirecting
-}
+  return (
+    <div className="min-h-screen bg-background">
+      <Dashboard />
+    </div>
+  );
+} 
