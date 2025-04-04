@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Dashboard } from '@/components/dashboard/Dashboard';
+import { Navbar } from '@/components/navigation/Navbar';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navbar />
       <Dashboard />
     </div>
   );
