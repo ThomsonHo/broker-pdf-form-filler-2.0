@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Button,
@@ -26,7 +26,7 @@ type LoginFormData = {
 
 export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const router = useRouter();
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: yupResolver(schema)
   });
@@ -48,8 +48,8 @@ export default function LoginForm() {
       const result = await response.json();
       // Store the token
       localStorage.setItem('token', result.token);
-      // Redirect to dashboard using React Router
-      navigate('/dashboard');
+      // Redirect to dashboard using Next.js router
+      router.push('/dashboard');
     } catch (err) {
       setError('Invalid email or password');
     }
