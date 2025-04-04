@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'broker_pdf_filler.pdf_forms',
     'broker_pdf_filler.llm_integration',
     'broker_pdf_filler.authentication',
+    'broker_pdf_filler.dashboard',
 ]
 
 MIDDLEWARE = [
