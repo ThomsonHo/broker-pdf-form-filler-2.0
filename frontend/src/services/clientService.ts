@@ -78,8 +78,7 @@ export const fetchClientById = async (id: string): Promise<Client> => {
 export const createClient = async (clientData: Partial<Client>): Promise<Client> => {
   try {
     console.log('Creating client with data:', clientData);
-    // Remove any leading slashes to prevent double slashes
-    const response = await api.post('clients', clientData);
+    const response = await api.post('clients/', clientData);
     console.log('Create response:', response);
     return response.data;
   } catch (error: any) {
@@ -171,4 +170,4 @@ export const exportClients = async (filters: ClientFilters = {}): Promise<Blob> 
     responseType: 'blob',
   });
   return response.data;
-}; 
+};  
