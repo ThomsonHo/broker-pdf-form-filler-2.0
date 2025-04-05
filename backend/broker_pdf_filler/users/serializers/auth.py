@@ -3,158 +3,120 @@ from django.contrib.auth import get_user_model, authenticate
 from django.utils.translation import gettext_lazy as _
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from ..models import UserActivity
+from ..models import UserActivity, BrokerCompany
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
 
+class EmailVerificationSerializer(serializers.Serializer):
+    """Serializer for email verification."""
+    token = serializers.CharField(required=True)
+
+
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for the user object."""
-    
+    """Serializer for user data."""
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'daily_form_quota', 'monthly_form_quota', 
-                  'is_active', 'is_staff', 'last_login', 'date_joined']
-        read_only_fields = ['id', 'is_staff', 'last_login', 'date_joined']
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'role', 'broker_company',
+            'tr_name', 'tr_license_number', 'tr_phone_number', 'is_tr',
+            'daily_form_quota', 'monthly_form_quota', 'email_verified',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'email_verified']
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration."""
-    
-    password = serializers.CharField(
-        write_only=True,
-        required=True,
-        style={'input_type': 'password'},
-        min_length=10,
-        help_text=_('Must be at least 10 characters long')
-    )
-    password_confirm = serializers.CharField(
-        write_only=True,
-        required=True,
-        style={'input_type': 'password'}
-    )
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True, required=True)
     
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'password', 'password_confirm', 'role']
+        fields = [
+            'email', 'password', 'password2', 'first_name', 'last_name',
+            'role', 'broker_company', 'tr_name', 'tr_license_number', 'tr_phone_number'
+        ]
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True},
-            'role': {'required': False}
+            'role': {'required': True},
+            'broker_company': {'required': True},
         }
     
     def validate(self, attrs):
-        """Validate that passwords match."""
-        if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError({"password_confirm": _("Passwords do not match.")})
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
     
+    def validate_broker_company(self, value):
+        if not value:
+            raise serializers.ValidationError("Broker company is required.")
+        return value
+    
     def create(self, validated_data):
-        """Create a new user with encrypted password."""
-        validated_data.pop('password_confirm')
-        user = User.objects.create_user(
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
-            role=validated_data.get('role', 'standard')
-        )
+        validated_data.pop('password2')
+        user = User.objects.create_user(**validated_data)
         return user
 
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Custom token serializer that includes user data in response."""
+class CustomTokenObtainPairSerializer(serializers.Serializer):
+    """Custom token serializer that includes user data."""
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
     
     def validate(self, attrs):
-        """Validate credentials and add user data to token."""
-        data = super().validate(attrs)
+        email = attrs.get('email')
+        password = attrs.get('password')
         
-        # Include user data in response
-        user = self.user
-        data.update({
-            'user': {
-                'id': str(user.id),
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'role': user.role,
-                'is_staff': user.is_staff,
-                'is_superuser': user.is_superuser,
-            }
-        })
-        
-        # Track login activity
-        ip_address = self.context['request'].META.get('REMOTE_ADDR', None)
-        UserActivity.objects.create(
-            user=user,
-            action='login',
-            ip_address=ip_address
+        if email and password:
+            user = User.objects.filter(email=email).first()
+            if user and user.check_password(password):
+                if not user.email_verified:
+                    raise serializers.ValidationError(
+                        {"email": "Please verify your email address before logging in."}
+                    )
+                return attrs
+            raise serializers.ValidationError(
+                {"email": "Invalid email or password."}
+            )
+        raise serializers.ValidationError(
+            {"email": "Must include 'email' and 'password'."}
         )
-        
-        # Update last login IP
-        user.last_login_ip = ip_address
-        user.save(update_fields=['last_login_ip'])
-        
-        return data
 
 
 class PasswordChangeSerializer(serializers.Serializer):
     """Serializer for password change."""
-    
-    current_password = serializers.CharField(
-        style={'input_type': 'password'},
-        required=True
-    )
-    new_password = serializers.CharField(
-        style={'input_type': 'password'},
-        required=True,
-        min_length=10,
-        help_text=_('Must be at least 10 characters long')
-    )
-    confirm_password = serializers.CharField(
-        style={'input_type': 'password'},
-        required=True
-    )
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    new_password2 = serializers.CharField(required=True)
     
     def validate(self, attrs):
-        """Validate that old password is correct and new passwords match."""
-        user = self.context['request'].user
-        
-        if not user.check_password(attrs['current_password']):
-            raise serializers.ValidationError({"current_password": _("Current password is incorrect.")})
-            
-        if attrs['new_password'] != attrs['confirm_password']:
-            raise serializers.ValidationError({"confirm_password": _("New passwords do not match.")})
-            
-        if attrs['current_password'] == attrs['new_password']:
-            raise serializers.ValidationError({"new_password": _("New password cannot be the same as current password.")})
-            
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({"new_password": "Password fields didn't match."})
         return attrs
+    
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     """Serializer for password reset request."""
-    
     email = serializers.EmailField(required=True)
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     """Serializer for password reset confirmation."""
-    
     token = serializers.CharField(required=True)
-    new_password = serializers.CharField(
-        style={'input_type': 'password'},
-        required=True,
-        min_length=10,
-        help_text=_('Must be at least 10 characters long')
-    )
-    confirm_password = serializers.CharField(
-        style={'input_type': 'password'},
-        required=True
-    )
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    new_password2 = serializers.CharField(required=True)
     
     def validate(self, attrs):
-        """Validate that new passwords match."""
-        if attrs['new_password'] != attrs['confirm_password']:
-            raise serializers.ValidationError({"confirm_password": _("Passwords do not match.")})
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({"new_password": "Password fields didn't match."})
         return attrs

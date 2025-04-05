@@ -94,6 +94,11 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='standard')
     broker_company = models.ForeignKey(BrokerCompany, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     
+    # Email verification fields
+    email_verified = models.BooleanField(default=False)
+    email_verification_token = models.CharField(max_length=64, null=True, blank=True)
+    email_verification_token_expiry = models.DateTimeField(null=True, blank=True)
+    
     # TR-specific fields
     tr_name = models.CharField(_('TR name'), max_length=255, null=True, blank=True)
     tr_license_number = models.CharField(_('TR license number'), max_length=50, null=True, blank=True)
@@ -120,6 +125,42 @@ class User(AbstractUser):
     def is_tr(self):
         """Check if the user has TR-specific information filled out."""
         return bool(self.tr_name and self.tr_license_number and self.tr_phone_number)
+    
+    def generate_email_verification_token(self):
+        """Generate a new email verification token."""
+        import secrets
+        self.email_verification_token = secrets.token_urlsafe(48)
+        self.email_verification_token_expiry = timezone.now() + timezone.timedelta(hours=24)
+        self.save()
+        return self.email_verification_token
+    
+    def generate_password_reset_token(self):
+        """Generate a new password reset token."""
+        import secrets
+        self.reset_password_token = secrets.token_urlsafe(48)
+        self.reset_password_token_expiry = timezone.now() + timezone.timedelta(hours=24)
+        self.save()
+        return self.reset_password_token
+    
+    def verify_email_token(self, token):
+        """Verify email verification token."""
+        if (self.email_verification_token == token and 
+            self.email_verification_token_expiry and 
+            self.email_verification_token_expiry > timezone.now()):
+            self.email_verified = True
+            self.email_verification_token = None
+            self.email_verification_token_expiry = None
+            self.save()
+            return True
+        return False
+    
+    def verify_password_reset_token(self, token):
+        """Verify password reset token."""
+        if (self.reset_password_token == token and 
+            self.reset_password_token_expiry and 
+            self.reset_password_token_expiry > timezone.now()):
+            return True
+        return False
 
 
 class UserActivity(models.Model):

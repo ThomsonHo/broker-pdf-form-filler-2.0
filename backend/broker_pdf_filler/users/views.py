@@ -6,10 +6,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 from .models import UserActivity, UserQuotaUsage, BrokerCompany, InsuranceCompanyAccount
 from .serializers.auth import (
     UserSerializer, UserRegistrationSerializer, CustomTokenObtainPairSerializer,
-    PasswordChangeSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+    PasswordChangeSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+    EmailVerificationSerializer
 )
 from .serializers.company import BrokerCompanySerializer, InsuranceCompanyAccountSerializer
 
@@ -29,7 +32,7 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         """Set permissions based on action."""
-        if self.action in ['create', 'register']:
+        if self.action in ['create', 'register', 'verify_email']:
             return [permissions.AllowAny()]
         elif self.action in ['list', 'retrieve']:
             return [permissions.IsAuthenticated()]
@@ -40,41 +43,39 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter queryset based on user role."""
         user = self.request.user
-        print(f"User: {user.email}, Role: {user.role}, Is Superuser: {user.is_superuser}")
-        
         if user.is_superuser:
-            queryset = User.objects.all().order_by('id')
-            print(f"Superuser queryset count: {queryset.count()}")
-            return queryset
+            return User.objects.all().order_by('id')
         elif user.role == 'admin':
-            queryset = User.objects.filter(broker_company=user.broker_company).order_by('id')
-            print(f"Admin queryset count: {queryset.count()}")
-            return queryset
+            return User.objects.filter(broker_company=user.broker_company).order_by('id')
         else:
-            queryset = User.objects.filter(id=user.id).order_by('id')
-            print(f"Standard user queryset count: {queryset.count()}")
-            return queryset
+            return User.objects.filter(id=user.id).order_by('id')
     
     def list(self, request, *args, **kwargs):
         """Override list method to apply filtering."""
         queryset = self.get_queryset()
-        print(f"List method queryset count: {queryset.count()}")  # Debug print
+        
+        # Apply search filter if provided
+        search_query = request.query_params.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                models.Q(email__icontains=search_query) |
+                models.Q(first_name__icontains=search_query) |
+                models.Q(last_name__icontains=search_query)
+            )
+        
+        # Apply role filter if provided
+        role_filter = request.query_params.get('role', '')
+        if role_filter:
+            queryset = queryset.filter(role=role_filter)
         
         # Get paginated response
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            response = self.get_paginated_response(serializer.data)
-            # Modify the response data to include only the results
-            response.data = response.data['results']
-            print(f"Paginated response data length: {len(response.data)}")  # Debug print
-            return response
+            return self.get_paginated_response(serializer.data)
         
-        # No pagination
         serializer = self.get_serializer(queryset, many=True)
-        data = serializer.data
-        print(f"Non-paginated response data length: {len(data)}")  # Debug print
-        return Response(data)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['post'])
     def register(self, request):
@@ -83,6 +84,10 @@ class UserViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             try:
                 user = serializer.save()
+                
+                # Generate and send email verification token
+                token = user.generate_email_verification_token()
+                self._send_verification_email(user, token)
                 
                 # Track user creation activity
                 UserActivity.objects.create(
@@ -104,7 +109,33 @@ class UserViewSet(viewsets.ModelViewSet):
                     {'error': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-        print("Registration validation errors:", serializer.errors)  # Add this line for debugging
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'])
+    def verify_email(self, request):
+        """Verify user email address."""
+        serializer = EmailVerificationSerializer(data=request.data)
+        if serializer.is_valid():
+            token = serializer.validated_data['token']
+            try:
+                user = User.objects.get(email_verification_token=token)
+                if user.verify_email_token(token):
+                    # Track email verification activity
+                    UserActivity.objects.create(
+                        user=user,
+                        action='email_verified',
+                        ip_address=self._get_client_ip(request)
+                    )
+                    return Response({'detail': 'Email verified successfully.'})
+                return Response(
+                    {'error': 'Invalid or expired token.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'Invalid token.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['post'])
@@ -135,8 +166,16 @@ class UserViewSet(viewsets.ModelViewSet):
             email = serializer.validated_data['email']
             try:
                 user = User.objects.get(email=email)
-                # Generate token and send email (implementation depends on email backend)
-                # For now, just return success
+                token = user.generate_password_reset_token()
+                self._send_password_reset_email(user, token)
+                
+                # Track password reset request activity
+                UserActivity.objects.create(
+                    user=user,
+                    action='password_reset_request',
+                    ip_address=self._get_client_ip(request)
+                )
+                
                 return Response({'detail': 'Password reset email sent if account exists.'})
             except User.DoesNotExist:
                 # Return success even if user doesn't exist for security
@@ -148,10 +187,34 @@ class UserViewSet(viewsets.ModelViewSet):
         """Confirm password reset."""
         serializer = PasswordResetConfirmSerializer(data=request.data)
         if serializer.is_valid():
-            # Verify token and update password
-            # Implementation depends on token verification method
-            # For now, just return success
-            return Response({'detail': 'Password reset successful.'})
+            token = serializer.validated_data['token']
+            new_password = serializer.validated_data['new_password']
+            
+            try:
+                user = User.objects.get(reset_password_token=token)
+                if user.verify_password_reset_token(token):
+                    user.set_password(new_password)
+                    user.reset_password_token = None
+                    user.reset_password_token_expiry = None
+                    user.save()
+                    
+                    # Track password reset activity
+                    UserActivity.objects.create(
+                        user=user,
+                        action='password_reset',
+                        ip_address=self._get_client_ip(request)
+                    )
+                    
+                    return Response({'detail': 'Password reset successful.'})
+                return Response(
+                    {'error': 'Invalid or expired token.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'Invalid token.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['get'])
@@ -187,6 +250,28 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+    
+    def _send_verification_email(self, user, token):
+        """Send email verification link."""
+        verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+        send_mail(
+            'Verify your email address',
+            f'Please click the following link to verify your email address: {verification_url}',
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+    
+    def _send_password_reset_email(self, user, token):
+        """Send password reset link."""
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        send_mail(
+            'Reset your password',
+            f'Please click the following link to reset your password: {reset_url}',
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
 
 
 class BrokerCompanyViewSet(viewsets.ModelViewSet):
