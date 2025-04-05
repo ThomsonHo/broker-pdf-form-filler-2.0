@@ -39,6 +39,7 @@ export default function LoginForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -46,8 +47,11 @@ export default function LoginForm() {
       }
 
       const result = await response.json();
-      // Store the token
-      localStorage.setItem('token', result.token);
+      // Store both access and refresh tokens
+      localStorage.setItem('access_token', result.access);
+      localStorage.setItem('refresh_token', result.refresh);
+      // Store user data
+      localStorage.setItem('user', JSON.stringify(result.user));
       // Redirect to dashboard using Next.js router
       router.push('/dashboard');
     } catch (err) {

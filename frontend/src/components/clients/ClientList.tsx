@@ -70,11 +70,13 @@ const ClientList: React.FC<ClientListProps> = ({
         page_size: rowsPerPage,
         search: searchTerm || undefined,
       });
-      setClients(response.results);
-      setTotalCount(response.count);
+      setClients(response.results || []);
+      setTotalCount(response.count || 0);
     } catch (err) {
       setError('Failed to load clients. Please try again later.');
       console.error('Error loading clients:', err);
+      setClients([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -158,6 +160,25 @@ const ClientList: React.FC<ClientListProps> = ({
     }
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography color="error">{error}</Typography>
+        <Button onClick={loadClients} sx={{ mt: 2 }}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ width: '100%' }}>
       <Paper sx={{ width: '100%', mb: 2, p: 2 }}>
@@ -208,18 +229,18 @@ const ClientList: React.FC<ClientListProps> = ({
               startIcon={<FilterListIcon />}
               onClick={() => setShowFilters(!showFilters)}
             >
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
+              Filters
             </Button>
           </Grid>
         </Grid>
 
         {showFilters && (
           <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth variant="outlined">
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
                 <InputLabel>Status</InputLabel>
                 <Select
-                  value={filters.is_active === undefined ? '' : String(filters.is_active)}
+                  value={filters.is_active?.toString() || ''}
                   onChange={handleFilterChange('is_active')}
                   label="Status"
                 >
@@ -229,8 +250,8 @@ const ClientList: React.FC<ClientListProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth variant="outlined">
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
                 <InputLabel>Nationality</InputLabel>
                 <Select
                   value={filters.nationality || ''}
@@ -238,14 +259,12 @@ const ClientList: React.FC<ClientListProps> = ({
                   label="Nationality"
                 >
                   <MenuItem value="">All</MenuItem>
-                  <MenuItem value="Hong Kong">Hong Kong</MenuItem>
-                  <MenuItem value="China">China</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
+                  {/* Add nationality options here */}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth variant="outlined">
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
                 <InputLabel>Country</InputLabel>
                 <Select
                   value={filters.country || ''}
@@ -253,125 +272,74 @@ const ClientList: React.FC<ClientListProps> = ({
                   label="Country"
                 >
                   <MenuItem value="">All</MenuItem>
-                  <MenuItem value="Hong Kong">Hong Kong</MenuItem>
-                  <MenuItem value="China">China</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth variant="outlined">
-                <InputLabel>City</InputLabel>
-                <Select
-                  value={filters.city || ''}
-                  onChange={handleFilterChange('city')}
-                  label="City"
-                >
-                  <MenuItem value="">All</MenuItem>
-                  <MenuItem value="Hong Kong">Hong Kong</MenuItem>
-                  <MenuItem value="Kowloon">Kowloon</MenuItem>
-                  <MenuItem value="New Territories">New Territories</MenuItem>
+                  {/* Add country options here */}
                 </Select>
               </FormControl>
             </Grid>
           </Grid>
         )}
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Typography color="error" sx={{ p: 2 }}>
-            {error}
-          </Typography>
-        ) : clients.length === 0 ? (
-          <Typography sx={{ p: 2, textAlign: 'center' }}>
-            No clients found. Try adjusting your filters or add a new client.
-          </Typography>
-        ) : (
-          <TableContainer>
-            <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>ID Number</TableCell>
-                  <TableCell>Contact</TableCell>
-                  <TableCell>Location</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {clients.map((client) => (
-                  <TableRow hover key={client.id}>
-                    <TableCell component="th" scope="row">
-                      {client.full_name}
-                    </TableCell>
-                    <TableCell>{client.id_number}</TableCell>
-                    <TableCell>
-                      {client.email && (
-                        <Typography variant="body2">{client.email}</Typography>
-                      )}
-                      {client.phone_number && (
-                        <Typography variant="body2">{client.phone_number}</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {client.city}, {client.country}
-                    </TableCell>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {clients && clients.length > 0 ? (
+                clients.map((client) => (
+                  <TableRow key={client.id}>
+                    <TableCell>{client.full_name}</TableCell>
+                    <TableCell>{client.email}</TableCell>
+                    <TableCell>{client.phone_number}</TableCell>
                     <TableCell>
                       <Chip
                         label={client.is_active ? 'Active' : 'Inactive'}
                         color={client.is_active ? 'success' : 'default'}
-                        size="small"
                         onClick={() => handleToggleActive(client.id, client.is_active)}
-                        sx={{ cursor: 'pointer' }}
                       />
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell>
                       <Tooltip title="View">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleViewClient(client)}
-                          color="primary"
-                        >
+                        <IconButton onClick={() => handleViewClient(client)}>
                           <VisibilityIcon />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEditClient(client)}
-                          color="primary"
-                        >
+                        <IconButton onClick={() => handleEditClient(client)}>
                           <EditIcon />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDeleteClient(client.id)}
-                          color="error"
-                        >
+                        <IconButton onClick={() => handleDeleteClient(client.id)}>
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    No clients found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"
           count={totalCount}
-          rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Paper>

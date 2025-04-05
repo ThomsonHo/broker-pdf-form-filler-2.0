@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import '@/polyfills';
+import { Inter } from 'next/font/google';
 
 export const metadata: Metadata = {
   title: "Create Next App",

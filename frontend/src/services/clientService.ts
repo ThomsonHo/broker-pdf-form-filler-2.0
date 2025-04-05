@@ -64,26 +64,85 @@ export const fetchClients = async (filters: ClientFilters = {}): Promise<ClientL
     }
   });
   
-  const response = await api.get(`/clients/?${params.toString()}`);
+  const response = await api.get(`clients/?${params.toString()}`);
   return response.data;
 };
 
 // Fetch a single client by ID
 export const fetchClientById = async (id: string): Promise<Client> => {
-  const response = await api.get(`/clients/${id}/`);
+  const response = await api.get(`clients/${id}/`);
   return response.data;
 };
 
 // Create a new client
 export const createClient = async (clientData: Partial<Client>): Promise<Client> => {
-  const response = await api.post('/clients/', clientData);
-  return response.data;
+  try {
+    console.log('Creating client with data:', clientData);
+    // Remove any leading slashes to prevent double slashes
+    const response = await api.post('clients', clientData);
+    console.log('Create response:', response);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error creating client:', error);
+    console.error('Error response:', error.response);
+    console.error('Error status:', error.response?.status);
+    console.error('Error data:', error.response?.data);
+    console.error('Request URL:', error.config?.url);
+    console.error('Request method:', error.config?.method);
+    console.error('Request headers:', error.config?.headers);
+    
+    // Provide more specific error messages based on status code
+    if (error.response?.status === 405) {
+      throw new Error('Server does not support POST method for this endpoint. Please check API configuration.');
+    } else if (error.response?.status === 401) {
+      throw new Error('Unauthorized. Please log in again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Forbidden. You do not have permission to create clients.');
+    } else if (error.response?.status === 400) {
+      // Handle validation errors
+      const errorData = error.response.data;
+      if (typeof errorData === 'object') {
+        const errorMessages = Object.entries(errorData)
+          .map(([field, message]) => `${field}: ${message}`)
+          .join(', ');
+        throw new Error(`Validation error: ${errorMessages}`);
+      }
+      throw new Error(`Bad request: ${JSON.stringify(errorData)}`);
+    }
+    
+    throw error;
+  }
 };
 
 // Update an existing client
 export const updateClient = async (id: string, clientData: Partial<Client>): Promise<Client> => {
-  const response = await api.put(`/clients/${id}/`, clientData);
-  return response.data;
+  try {
+    console.log(`Updating client ${id} with data:`, clientData);
+    const url = `clients/${id}/`;
+    console.log('Update URL:', url);
+    
+    // Try using PATCH first
+    try {
+      const response = await api.patch(url, clientData);
+      console.log('PATCH response:', response);
+      return response.data;
+    } catch (error: any) {
+      // If PATCH fails with 405, try PUT
+      if (error.response && error.response.status === 405) {
+        console.log('PATCH not allowed, trying PUT');
+        const response = await api.put(url, clientData);
+        console.log('PUT response:', response);
+        return response.data;
+      }
+      throw error;
+    }
+  } catch (error: any) {
+    console.error('Error updating client:', error);
+    console.error('Error response:', error.response);
+    console.error('Error status:', error.response?.status);
+    console.error('Error data:', error.response?.data);
+    throw error;
+  }
 };
 
 // Delete a client

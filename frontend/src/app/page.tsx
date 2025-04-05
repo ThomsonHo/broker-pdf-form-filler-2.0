@@ -9,8 +9,16 @@ export default function Home() {
 
   useEffect(() => {
     // Check if user is authenticated
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const accessToken = localStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_token');
+    const user = localStorage.getItem('user');
+
+    if (!accessToken || !refreshToken || !user) {
+      console.log('Missing authentication data:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        hasUser: !!user
+      });
       router.push('/login');
     } else {
       router.push('/dashboard');

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Container, Dialog } from '@mui/material';
 import ClientList from './ClientList';
 import ClientForm from './ClientForm';
@@ -12,6 +12,12 @@ const ClientsPageClient: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  // Only render the component after it has mounted on the client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleAddClient = () => {
     setSelectedClientId(null);
@@ -54,6 +60,11 @@ const ClientsPageClient: React.FC = () => {
       setIsFormOpen(true);
     }
   };
+
+  // Return a placeholder during server-side rendering
+  if (!mounted) {
+    return <Container maxWidth="xl"><Box sx={{ py: 3 }}>Loading...</Box></Container>;
+  }
 
   return (
     <Container maxWidth="xl">

@@ -1,5 +1,5 @@
-import ClientsPageClient from '../../components/clients/ClientsPageClient';
+import ClientsPageWrapper from '../../components/clients/ClientsPageWrapper';
 
 export default function ClientsPage() {
-  return <ClientsPageClient />;
+  return <ClientsPageWrapper />;
 } 

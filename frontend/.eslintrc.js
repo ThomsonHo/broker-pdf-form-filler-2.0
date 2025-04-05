@@ -1,6 +1,9 @@
 module.exports = {
   root: true,
-  extends: ['next/core-web-vitals', 'plugin:jest/recommended'],
+  extends: [
+    'next/core-web-vitals',
+    'plugin:jest/recommended',
+  ],
   plugins: ['jest'],
   env: {
     browser: true,
@@ -15,5 +18,9 @@ module.exports = {
     next: {
       rootDir: '.',
     },
+  },
+  parserOptions: {
+    ecmaVersion: 2021,
+    sourceType: 'module',
   },
 }; 
