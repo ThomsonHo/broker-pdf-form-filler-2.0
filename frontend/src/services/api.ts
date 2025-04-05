@@ -35,11 +35,9 @@ api.interceptors.request.use((config) => {
   
   // Normalize URL
   if (config.url) {
-    // Remove leading and trailing slashes
-    config.url = config.url.replace(/^\/+|\/+$/g, '');
+    config.url = config.url.replace(/^\/+/g, '');
     
-    // Add trailing slash for non-query URLs
-    if (!config.url.includes('?')) {
+    if (!config.url.includes('?') && !config.url.endsWith('/')) {
       config.url = `${config.url}/`;
     }
     
@@ -107,4 +105,4 @@ export const fetchDashboardData = async () => {
     log('Error fetching dashboard data:', error);
     throw error;
   }
-}; 
+};  
