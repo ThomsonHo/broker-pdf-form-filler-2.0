@@ -40,21 +40,30 @@ class UserManager(BaseUserManager):
 
 
 class BrokerCompany(models.Model):
-    """Model to store broker company information."""
-    
+    """Model for broker companies."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(_('company name'), max_length=255, unique=True)
-    code = models.CharField(_('company code'), max_length=50, unique=True)
+    name = models.CharField(max_length=255, null=True, blank=True, verbose_name='broker name')
+    ia_reg_code = models.CharField(max_length=6, null=True, blank=True, verbose_name='broker IA reg code')
+    mpfa_reg_code = models.CharField(max_length=8, null=True, blank=True, verbose_name='broker MPA code')
+    phone_number = models.CharField(max_length=20, null=True, blank=True, verbose_name='broker phone number')
+    address = models.TextField(default='Hong Kong', null=True, blank=True, verbose_name='broker address')
+    responsible_officer_email = models.EmailField(max_length=254, null=True, blank=True, verbose_name='broker responsible officer email')
+    contact_email = models.EmailField(max_length=254, null=True, blank=True, verbose_name='broker contact email')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        verbose_name = _('broker company')
-        verbose_name_plural = _('broker companies')
+        verbose_name = "Broker Company"
+        verbose_name_plural = "Broker Companies"
         ordering = ['name']
-    
+
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.ia_reg_code})"
+
+    @property
+    def user_count(self):
+        """Get the number of users associated with this company."""
+        return self.user_set.count()
 
 
 class InsuranceCompanyAccount(models.Model):
@@ -92,7 +101,13 @@ class User(AbstractUser):
     username = None  # Remove username field
     email = models.EmailField(_('email address'), unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='standard')
-    broker_company = models.ForeignKey(BrokerCompany, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+    broker_company = models.ForeignKey(
+        BrokerCompany, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='users'
+    )
     
     # Email verification fields
     email_verified = models.BooleanField(default=False)

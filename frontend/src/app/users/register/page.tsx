@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
-import { userService, UserRegistrationData } from '@/services/userService';
+import { userService, UserRegistrationData, BrokerCompany } from '@/services/userService';
 import * as yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -46,7 +46,11 @@ const registrationSchema = yup.object().shape({
   password: yup
     .string()
     .required('Password is required')
-    .min(8, 'Password must be at least 8 characters'),
+    .min(10, 'Password must be at least 10 characters')
+    .matches(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/,
+      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
+    ),
   password2: yup
     .string()
     .required('Please confirm your password')
@@ -62,6 +66,7 @@ function RegisterContent() {
   const { register: registerUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [brokerCompanies, setBrokerCompanies] = useState<BrokerCompany[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -72,14 +77,34 @@ function RegisterContent() {
     severity: 'info',
   });
 
+  useEffect(() => {
+    const fetchBrokerCompanies = async () => {
+      try {
+        const companies = await userService.getBrokerCompanies();
+        setBrokerCompanies(companies);
+      } catch (error) {
+        console.error('Error fetching broker companies:', error);
+        setSnackbar({
+          open: true,
+          message: 'Error fetching broker companies',
+          severity: 'error',
+        });
+      }
+    };
+    fetchBrokerCompanies();
+  }, []);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
+    watch,
   } = useForm<RegistrationFormData>({
     resolver: yupResolver(registrationSchema),
     defaultValues: {
       role: 'standard',
+      broker_company: '',
     },
   });
 
@@ -187,13 +212,25 @@ function RegisterContent() {
                 </FormControl>
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Company"
-                  {...register('broker_company')}
-                  error={!!errors.broker_company}
-                  helperText={errors.broker_company?.message}
-                />
+                <FormControl fullWidth error={!!errors.broker_company}>
+                  <InputLabel>Company</InputLabel>
+                  <Select 
+                    label="Company" 
+                    value={watch('broker_company')}
+                    onChange={(e) => setValue('broker_company', e.target.value)}
+                  >
+                    {brokerCompanies.map((company) => (
+                      <MenuItem key={company.ia_reg_code} value={company.ia_reg_code}>
+                        {company.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors.broker_company && (
+                    <Typography color="error" variant="caption">
+                      {errors.broker_company.message}
+                    </Typography>
+                  )}
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <TextField

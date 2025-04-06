@@ -34,7 +34,14 @@ class Command(BaseCommand):
         if company_name:
             broker_company, created = BrokerCompany.objects.get_or_create(
                 name=company_name,
-                defaults={'code': company_name[:3].upper()}
+                defaults={
+                    'ia_reg_code': company_name[:3].upper(),
+                    'mpfa_reg_code': company_name[:3].upper(),
+                    'address': 'To be updated',
+                    'phone_number': 'To be updated',
+                    'responsible_officer_email': 'To be updated',
+                    'contact_email': 'To be updated'
+                }
             )
             if created:
                 self.stdout.write(self.style.SUCCESS(f'Created broker company: {company_name}'))

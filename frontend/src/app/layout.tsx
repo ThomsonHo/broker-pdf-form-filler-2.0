@@ -3,6 +3,10 @@
 import { Providers } from './providers';
 import { usePathname } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
+import { useServerInsertedHTML } from 'next/navigation';
+import createEmotionCache from '@/lib/createEmotionCache';
+import { CacheProvider } from '@emotion/react';
+import { useEffect, useState } from 'react';
 
 // Paths that don't require the app layout
 const publicPaths = [
@@ -20,6 +24,11 @@ export default function RootLayout({
 }) {
   const pathname = usePathname();
   const isPublicPath = publicPaths.some(path => pathname?.startsWith(path));
+  
+  // Only create the cache during client-side rendering
+  const [emotionCache] = useState(() => {
+    return createEmotionCache();
+  });
 
   return (
     <html lang="en">
@@ -32,9 +41,11 @@ export default function RootLayout({
         />
       </head>
       <body style={{ margin: 0, fontFamily: 'Inter, sans-serif' }}>
-        <Providers>
-          {isPublicPath ? children : <AppLayout>{children}</AppLayout>}
-        </Providers>
+        <CacheProvider value={emotionCache}>
+          <Providers>
+            {isPublicPath ? children : <AppLayout>{children}</AppLayout>}
+          </Providers>
+        </CacheProvider>
       </body>
     </html>
   );

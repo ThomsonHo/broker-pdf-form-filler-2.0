@@ -72,6 +72,20 @@ export interface UserActivity {
   timestamp: string;
 }
 
+export interface BrokerCompany {
+  id: string;
+  name: string;
+  ia_reg_code: string;
+  mpfa_reg_code: string;
+  phone_number: string;
+  address: string;
+  responsible_officer_email: string;
+  contact_email: string;
+  created_at: string;
+  updated_at: string;
+  user_count: number;
+}
+
 class UserService {
   private baseUrl = `${API_BASE_URL}/users`;
 
@@ -85,9 +99,44 @@ class UserService {
     return response.data;
   }
 
-  async createUser(data: CreateUserData): Promise<User> {
+  async createUser(data: CreateUserData & { password?: string; password2?: string }): Promise<User> {
+    // If password is provided, use the registration endpoint
+    if (data.password && data.password2) {
+      try {
+        const registrationData: UserRegistrationData = {
+          email: data.email,
+          password: data.password,
+          password2: data.password2,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          role: data.role as 'admin' | 'standard',
+          broker_company: data.broker_company,
+          tr_name: data.tr_name || undefined,
+          tr_license_number: data.tr_license_number || undefined,
+          tr_phone_number: data.tr_phone_number || undefined,
+        };
+        
+        console.log('Registration data:', registrationData);
+        const response = await api.post('/users/register/', registrationData);
+        return response.data;
+      } catch (error: any) {
+        console.error('Registration error:', error.response?.data || error.message);
+        throw error;
+      }
+    }
+    
+    // Otherwise use the regular create endpoint (should not happen with our current UI)
     const response = await api.post('/users/', data);
     return response.data;
+  }
+
+  async getBrokerCompanyByCode(code: string): Promise<BrokerCompany> {
+    const companies = await this.getBrokerCompanies();
+    const company = companies.find(c => c.ia_reg_code === code);
+    if (!company) {
+      throw new Error(`Broker company with code ${code} not found`);
+    }
+    return company;
   }
 
   async updateUser(id: string, data: UpdateUserData): Promise<User> {
@@ -162,6 +211,25 @@ class UserService {
   }): Promise<{ results: User[]; count: number }> {
     const response = await api.get('/users/', { params });
     return response.data;
+  }
+
+  async getBrokerCompanies(): Promise<BrokerCompany[]> {
+    const response = await api.get('/users/broker-companies/');
+    return response.data.results || [];
+  }
+
+  async createBrokerCompany(data: Omit<BrokerCompany, 'created_at' | 'updated_at' | 'user_count'>): Promise<BrokerCompany> {
+    const response = await api.post('/users/broker-companies/', data);
+    return response.data;
+  }
+
+  async updateBrokerCompany(iaRegCode: string, data: Partial<BrokerCompany>): Promise<BrokerCompany> {
+    const response = await api.patch(`/users/broker-companies/${iaRegCode}/`, data);
+    return response.data;
+  }
+
+  async deleteBrokerCompany(iaRegCode: string): Promise<void> {
+    await api.delete(`/users/broker-companies/${iaRegCode}/`);
   }
 }
 

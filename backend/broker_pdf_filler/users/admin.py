@@ -15,8 +15,8 @@ class InsuranceCompanyAccountInline(admin.TabularInline):
 class BrokerCompanyAdmin(admin.ModelAdmin):
     """Admin interface for BrokerCompany model."""
     
-    list_display = ('name', 'code', 'user_count', 'created_at')
-    search_fields = ('name', 'code')
+    list_display = ('name', 'ia_reg_code', 'mpfa_reg_code', 'user_count', 'created_at')
+    search_fields = ('name', 'ia_reg_code', 'mpfa_reg_code')
     readonly_fields = ('created_at', 'updated_at')
     inlines = [InsuranceCompanyAccountInline]
     

@@ -17,6 +17,9 @@ class EmailVerificationSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user data."""
+    id = serializers.UUIDField(read_only=True)
+    broker_company = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
         fields = [
@@ -26,12 +29,19 @@ class UserSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'email_verified']
+    
+    def get_broker_company(self, obj):
+        """Return the broker company's ia_reg_code instead of the object."""
+        if obj.broker_company:
+            return obj.broker_company.ia_reg_code
+        return None
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration."""
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
+    broker_company = serializers.CharField(required=False, allow_null=True)
     
     class Meta:
         model = User
@@ -42,8 +52,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True},
-            'role': {'required': True},
-            'broker_company': {'required': True},
         }
     
     def validate(self, attrs):
@@ -52,14 +60,40 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
     
     def validate_broker_company(self, value):
-        if not value:
-            raise serializers.ValidationError("Broker company is required.")
+        # Check if we're in a registration context (no authenticated user)
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            # For new registrations, broker_company is required for non-admin users
+            if not value and self.initial_data.get('role') != 'admin':
+                raise serializers.ValidationError("Broker company is required for non-admin users.")
+            return value
+        
+        # For authenticated users, broker_company is required for non-admin users
+        if not value and request.user.role != 'admin':
+            raise serializers.ValidationError("Broker company is required for non-admin users.")
         return value
     
     def create(self, validated_data):
+        # Handle broker_company separately
+        broker_company_code = validated_data.pop('broker_company', None)
+        if broker_company_code:
+            try:
+                broker_company = BrokerCompany.objects.get(ia_reg_code=broker_company_code)
+                validated_data['broker_company'] = broker_company
+            except BrokerCompany.DoesNotExist:
+                raise serializers.ValidationError({"broker_company": "Invalid broker company code."})
+        
         validated_data.pop('password2')
         user = User.objects.create_user(**validated_data)
         return user
+    
+    def to_representation(self, instance):
+        """Customize the serialized representation of the user."""
+        data = super().to_representation(instance)
+        # Convert broker_company from object to string (ia_reg_code)
+        if instance.broker_company:
+            data['broker_company'] = instance.broker_company.ia_reg_code
+        return data
 
 
 class CustomTokenObtainPairSerializer(serializers.Serializer):

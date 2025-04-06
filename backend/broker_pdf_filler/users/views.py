@@ -80,7 +80,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def register(self, request):
         """Register a new user."""
-        serializer = UserRegistrationSerializer(data=request.data)
+        serializer = UserRegistrationSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             try:
                 user = serializer.save()
@@ -280,13 +280,15 @@ class BrokerCompanyViewSet(viewsets.ModelViewSet):
     serializer_class = BrokerCompanySerializer
     permission_classes = [permissions.IsAuthenticated]
     
-    def get_permissions(self):
-        """Set permissions based on action."""
-        if self.action in ['list', 'retrieve']:
-            return [permissions.IsAuthenticated()]
-        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [permissions.IsAdminUser()]
-        return super().get_permissions()
+    def get_queryset(self):
+        """Filter queryset based on user role."""
+        user = self.request.user
+        if user.is_superuser:
+            return BrokerCompany.objects.all().order_by('name')
+        elif user.role == 'admin':
+            return BrokerCompany.objects.filter(id=user.broker_company.id).order_by('name')
+        else:
+            return BrokerCompany.objects.filter(id=user.broker_company.id).order_by('name')
 
 
 class InsuranceCompanyAccountViewSet(viewsets.ModelViewSet):

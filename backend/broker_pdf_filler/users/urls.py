@@ -10,9 +10,9 @@ from .views import (
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
-router.register(r'users', UserViewSet, basename='user')
 router.register(r'broker-companies', BrokerCompanyViewSet, basename='broker-company')
 router.register(r'insurance-accounts', InsuranceCompanyAccountViewSet, basename='insurance-account')
+router.register(r'', UserViewSet, basename='user')
 
 # The API URLs are determined automatically by the router
 urlpatterns = [

@@ -38,6 +38,7 @@ interface UserFormProps {
   onSubmit: (data: UserFormData) => Promise<void>;
   user?: User;
   title: string;
+  brokerCompanies: { id: number; ia_reg_code: string; name: string }[];
 }
 
 const createSchema = (isEdit: boolean) => {
@@ -47,7 +48,11 @@ const createSchema = (isEdit: boolean) => {
       ? yup.string().optional()
       : yup.string()
           .required('Password is required')
-          .min(10, 'Password must be at least 10 characters'),
+          .min(10, 'Password must be at least 10 characters')
+          .matches(
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/,
+            'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
+          ),
     password2: isEdit
       ? yup.string().optional()
       : yup.string()
@@ -69,6 +74,7 @@ export const UserForm: React.FC<UserFormProps> = ({
   onSubmit,
   user,
   title,
+  brokerCompanies,
 }) => {
   const isEdit = !!user;
 
@@ -227,13 +233,21 @@ export const UserForm: React.FC<UserFormProps> = ({
                 name="broker_company"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Broker Company"
-                    fullWidth
-                    error={!!errors.broker_company}
-                    helperText={errors.broker_company?.message}
-                  />
+                  <FormControl fullWidth error={!!errors.broker_company}>
+                    <InputLabel>Broker Company</InputLabel>
+                    <Select {...field} label="Broker Company">
+                      {brokerCompanies.map((company) => (
+                        <MenuItem key={company.id} value={company.ia_reg_code}>
+                          {company.name} ({company.ia_reg_code})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.broker_company && (
+                      <Typography variant="caption" color="error">
+                        {errors.broker_company.message}
+                      </Typography>
+                    )}
+                  </FormControl>
                 )}
               />
             </Grid>

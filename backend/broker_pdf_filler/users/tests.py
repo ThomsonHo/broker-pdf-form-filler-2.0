@@ -16,7 +16,12 @@ class UserViewSetTests(TestCase):
         # Create a broker company
         self.broker_company = BrokerCompany.objects.create(
             name='Test Broker Company',
-            code='TBC'
+            ia_reg_code='TBC123',
+            mpfa_reg_code='TBC12345',
+            address='Test Address',
+            phone_number='1234567890',
+            responsible_officer_email='responsible@test.com',
+            contact_email='contact@test.com'
         )
         
         # Create a superuser

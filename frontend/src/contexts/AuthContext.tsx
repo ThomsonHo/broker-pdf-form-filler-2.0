@@ -46,6 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Compute isAuthenticated and isAdmin based on user state
+  const isAuthenticated = !!user;
+  const isAdmin = Boolean(user?.role === 'admin' || user?.is_superuser);
+
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -205,7 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (data: RegisterData) => {
     try {
-      const response = await fetch('http://localhost:8000/api/auth/register/', {
+      const response = await fetch('http://localhost:8000/api/users/register/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -228,20 +232,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    isLoading,
-    login,
-    logout,
-    changePassword,
-    requestPasswordReset,
-    updateUser,
-    register,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
+      isAdmin,
+      isLoading,
+      login,
+      logout,
+      changePassword,
+      requestPasswordReset,
+      updateUser,
+      register,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
