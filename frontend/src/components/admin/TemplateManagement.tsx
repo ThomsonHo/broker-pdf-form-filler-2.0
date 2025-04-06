@@ -306,10 +306,10 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Template Management</Typography>
+      <Box sx={{ mb: 2 }}>
         <Button
           variant="contained"
+          color="primary"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
         >
@@ -389,157 +389,108 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
         />
       </TableContainer>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
-          {selectedTemplate ? 'Edit Template' : 'Add Template'}
+          Template Preview
+          <IconButton
+            aria-label="close"
+            onClick={() => setPreviewOpen(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  {...register('name')}
-                  error={!!errors.name}
-                  helperText={errors.name?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={3}
-                  {...register('description')}
-                  error={!!errors.description}
-                  helperText={errors.description?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!errors.category}>
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    label="Category"
-                    {...register('category')}
-                  >
-                    <MenuItem value="broker">Broker</MenuItem>
-                    <MenuItem value="boclife">BOC Life</MenuItem>
-                    <MenuItem value="chubb">Chubb</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Version"
-                  {...register('version')}
-                  error={!!errors.version}
-                  helperText={errors.version?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <input
-                  type="file"
-                  id="template-file"
-                  accept=".pdf"
-                  style={{ display: 'none' }}
-                />
-                <label htmlFor="template-file">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    fullWidth
-                  >
-                    Upload PDF Template
-                  </Button>
-                </label>
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button type="submit" variant="contained">
-              {selectedTemplate ? 'Update' : 'Create'}
-            </Button>
-          </DialogActions>
-        </form>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => handleDownloadTemplate(selectedTemplate?.id)}
+                startIcon={<DownloadIcon />}
+              >
+                Download Template
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => handleOpenDialog(selectedTemplate)}
+                startIcon={<EditIcon />}
+              >
+                Edit Template
+              </Button>
+            </Box>
+            {previewUrl && (
+              <Box sx={{ height: '70vh', border: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                <PDFPreview url={previewUrl} />
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
       </Dialog>
 
-      {selectedTemplate && (
-        <Box sx={{ mt: 4 }}>
-          <Paper>
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              aria-label="template tabs"
-            >
-              <Tab label="Details" />
-              <Tab label="Field Mappings" />
-              <Tab label="Testing" />
-            </Tabs>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="lg" fullWidth>
+        <DialogTitle>
+          Field Mappings
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseDialog}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs value={tabValue} onChange={handleTabChange}>
+                <Tab label="Field Mappings" />
+                <Tab label="Field Validation" />
+                <Tab label="Test Data" />
+              </Tabs>
+            </Box>
             <TabPanel value={tabValue} index={0}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography variant="h6">Template Details</Typography>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography><strong>Name:</strong> {selectedTemplate.name}</Typography>
-                  <Typography><strong>Category:</strong> {selectedTemplate.category}</Typography>
-                  <Typography><strong>Version:</strong> {selectedTemplate.version}</Typography>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography><strong>Status:</strong> {selectedTemplate.is_active ? 'Active' : 'Inactive'}</Typography>
-                  <Typography><strong>Created:</strong> {new Date(selectedTemplate.created_at).toLocaleDateString()}</Typography>
-                  <Typography><strong>Last Updated:</strong> {new Date(selectedTemplate.updated_at).toLocaleDateString()}</Typography>
-                </Grid>
-              </Grid>
-            </TabPanel>
-            <TabPanel value={tabValue} index={1}>
               <FieldMappingComponent
-                templateId={selectedTemplate.id}
-                onMappingUpdate={() => {
-                  setSnackbar({
-                    open: true,
-                    message: 'Field mappings updated successfully',
-                    severity: 'success',
-                  });
+                templateId={selectedTemplate?.id}
+                fieldMappings={fieldMappings}
+                onSave={(mappings) => {
+                  setFieldMappings(mappings);
+                  handleCloseDialog();
                 }}
               />
             </TabPanel>
-            <TabPanel value={tabValue} index={2}>
+            <TabPanel value={tabValue} index={1}>
               <FieldValidation
-                templateId={selectedTemplate.id}
+                templateId={selectedTemplate?.id}
                 fieldMappings={fieldMappings}
-                onSaveTestData={handleSaveTestData}
               />
             </TabPanel>
-          </Paper>
-        </Box>
-      )}
-
-      <Dialog
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        maxWidth="xl"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">Template Preview</Typography>
-            <IconButton onClick={() => setPreviewOpen(false)}>
-              <CloseIcon />
-            </IconButton>
+            <TabPanel value={tabValue} index={2}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Test Data (JSON)"
+                  multiline
+                  rows={10}
+                  value={JSON.stringify(selectedTemplate?.test_data || {}, null, 2)}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => handleSaveTestData(selectedTemplate?.test_data)}
+                >
+                  Save Test Data
+                </Button>
+              </Box>
+            </TabPanel>
           </Box>
-        </DialogTitle>
-        <DialogContent>
-          {selectedTemplate && (
-            <PDFPreview
-              templateId={selectedTemplate.id}
-              fieldMappings={fieldMappings}
-              onSaveTestData={handleSaveTestData}
-            />
-          )}
         </DialogContent>
       </Dialog>
 

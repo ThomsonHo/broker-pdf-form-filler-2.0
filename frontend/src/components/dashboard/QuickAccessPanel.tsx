@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Button, Icon, Grid } from '@mui/material';
+import { Box, Button, Icon, Grid, Typography } from '@mui/material';
 import Link from 'next/link';
 import DescriptionIcon from '@mui/icons-material/Description';
 
@@ -10,6 +10,7 @@ interface QuickLink {
   title: string;
   url: string;
   icon: string;
+  description: string;
 }
 
 interface QuickAccessPanelProps {
@@ -23,7 +24,8 @@ export const QuickAccessPanel: React.FC<QuickAccessPanelProps> = ({ links = [] }
       id: 1,
       title: 'Generate Forms',
       url: '/forms',
-      icon: 'description'
+      icon: 'description',
+      description: 'Generate new forms'
     }
   ];
 
@@ -36,32 +38,46 @@ export const QuickAccessPanel: React.FC<QuickAccessPanelProps> = ({ links = [] }
   }
 
   return (
-    <Grid container spacing={2}>
-      {displayLinks.map((link) => (
-        <Grid item xs={12} sm={6} md={3} key={link.id}>
-          <Link href={link.url} passHref legacyBehavior>
-            <Button
-              component="a"
-              variant="outlined"
-              fullWidth
-              sx={{
-                py: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 1
-              }}
-            >
-              {link.icon === 'description' ? (
-                <DescriptionIcon />
-              ) : (
-                <Icon>{link.icon}</Icon>
-              )}
-              {link.title}
-            </Button>
-          </Link>
-        </Grid>
-      ))}
-    </Grid>
+    <Box>
+      <Typography variant="h6" gutterBottom>
+        Quick Access
+      </Typography>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+          gap: 2,
+        }}
+      >
+        {displayLinks.map((link) => (
+          <Box key={link.id}>
+            <Link href={link.url} passHref legacyBehavior>
+              <Button
+                component="a"
+                variant="outlined"
+                color="primary"
+                fullWidth
+                startIcon={link.icon === 'description' ? <DescriptionIcon /> : <Icon>{link.icon}</Icon>}
+                sx={{
+                  justifyContent: 'flex-start',
+                  textAlign: 'left',
+                  height: '100%',
+                  p: 2,
+                }}
+              >
+                <Box>
+                  <Typography variant="subtitle1" component="div">
+                    {link.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {link.description}
+                  </Typography>
+                </Box>
+              </Button>
+            </Link>
+          </Box>
+        ))}
+      </Box>
+    </Box>
   );
 }; 

@@ -1,305 +1,209 @@
 'use client';
 
-import React, { useState, Suspense, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
-  Paper,
   Typography,
+  Paper,
   TextField,
   Button,
-  Snackbar,
-  Alert,
   CircularProgress,
-  Link,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Container,
+  Link as MuiLink,
 } from '@mui/material';
-import { useRouter } from 'next/navigation';
-import NextLink from 'next/link';
-import { userService, UserRegistrationData, BrokerCompany } from '@/services/userService';
-import * as yup from 'yup';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
-interface RegistrationFormData {
-  email: string;
-  password: string;
-  password2: string;
+interface RegisterFormData {
   first_name: string;
   last_name: string;
-  role: 'admin' | 'standard';
+  email: string;
+  password: string;
+  confirm_password: string;
   broker_company: string;
-  tr_name?: string;
-  tr_license_number?: string;
-  tr_phone_number?: string;
+  tr_name: string;
+  tr_license_number: string;
+  tr_phone_number: string;
 }
 
-const registrationSchema = yup.object().shape({
+const registerSchema = yup.object<RegisterFormData>().shape({
   first_name: yup.string().required('First name is required'),
   last_name: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup
     .string()
     .required('Password is required')
-    .min(10, 'Password must be at least 10 characters')
-    .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/,
-      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
-    ),
-  password2: yup
+    .min(8, 'Password must be at least 8 characters'),
+  confirm_password: yup
     .string()
     .required('Please confirm your password')
     .oneOf([yup.ref('password')], 'Passwords must match'),
-  role: yup.string().oneOf(['admin', 'standard']).required('Role is required'),
-  broker_company: yup.string().required('Company is required'),
-  tr_name: yup.string(),
-  tr_license_number: yup.string(),
-  tr_phone_number: yup.string(),
+  broker_company: yup.string().required('Broker company is required'),
+  tr_name: yup.string().required('TR name is required'),
+  tr_license_number: yup.string().required('TR license number is required'),
+  tr_phone_number: yup.string().required('TR phone number is required'),
 });
 
-function RegisterContent() {
-  const { register: registerUser } = useAuth();
+export default function RegisterPage() {
+  const { register: authRegister } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [brokerCompanies, setBrokerCompanies] = useState<BrokerCompany[]>([]);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info' | 'warning';
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  });
-
-  useEffect(() => {
-    const fetchBrokerCompanies = async () => {
-      try {
-        const companies = await userService.getBrokerCompanies();
-        setBrokerCompanies(companies);
-      } catch (error) {
-        console.error('Error fetching broker companies:', error);
-        setSnackbar({
-          open: true,
-          message: 'Error fetching broker companies',
-          severity: 'error',
-        });
-      }
-    };
-    fetchBrokerCompanies();
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch,
-  } = useForm<RegistrationFormData>({
-    resolver: yupResolver(registrationSchema),
-    defaultValues: {
-      role: 'standard',
-      broker_company: '',
-    },
+  } = useForm<RegisterFormData>({
+    resolver: yupResolver(registerSchema),
   });
 
-  const handleFormSubmit = async (data: RegistrationFormData) => {
-    setLoading(true);
+  const handleFormSubmit = async (data: RegisterFormData) => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      await registerUser(data);
-      setSnackbar({
-        open: true,
-        message: 'Registration successful! Please check your email to verify your account.',
-        severity: 'success',
-      });
-      setTimeout(() => {
-        router.push('/users/login');
-      }, 3000);
-    } catch (error) {
-      console.error('Registration error:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error during registration. Please try again.',
-        severity: 'error',
-      });
+      await authRegister(data);
+      router.push('/login?registered=true');
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 4, mb: 4 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Register
-          </Typography>
-          <form onSubmit={handleSubmit(handleFormSubmit)}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  {...register('first_name')}
-                  error={!!errors.first_name}
-                  helperText={errors.first_name?.message}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  {...register('last_name')}
-                  error={!!errors.last_name}
-                  helperText={errors.last_name?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  {...register('email')}
-                  error={!!errors.email}
-                  helperText={errors.email?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Password"
-                  type="password"
-                  {...register('password')}
-                  error={!!errors.password}
-                  helperText={errors.password?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Confirm Password"
-                  type="password"
-                  {...register('password2')}
-                  error={!!errors.password2}
-                  helperText={errors.password2?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!errors.role}>
-                  <InputLabel>Role</InputLabel>
-                  <Select
-                    label="Role"
-                    {...register('role')}
-                    defaultValue="standard"
-                  >
-                    <MenuItem value="standard">Standard</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
-                  </Select>
-                  {errors.role && (
-                    <Typography color="error" variant="caption">
-                      {errors.role.message}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!errors.broker_company}>
-                  <InputLabel>Company</InputLabel>
-                  <Select 
-                    label="Company" 
-                    value={watch('broker_company')}
-                    onChange={(e) => setValue('broker_company', e.target.value)}
-                  >
-                    {brokerCompanies.map((company) => (
-                      <MenuItem key={company.ia_reg_code} value={company.ia_reg_code}>
-                        {company.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.broker_company && (
-                    <Typography color="error" variant="caption">
-                      {errors.broker_company.message}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="TR Name"
-                  {...register('tr_name')}
-                  error={!!errors.tr_name}
-                  helperText={errors.tr_name?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="TR License Number"
-                  {...register('tr_license_number')}
-                  error={!!errors.tr_license_number}
-                  helperText={errors.tr_license_number?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="TR Phone Number"
-                  {...register('tr_phone_number')}
-                  error={!!errors.tr_phone_number}
-                  helperText={errors.tr_phone_number?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  disabled={loading}
-                >
-                  {loading ? <CircularProgress size={24} /> : 'Register'}
-                </Button>
-              </Grid>
-            </Grid>
-          </form>
-        </Paper>
-      </Box>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 3,
+      }}
+    >
+      <Paper
+        sx={{
+          p: 4,
+          width: '100%',
+          maxWidth: 800,
+        }}
       >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
-  );
-}
+        <Typography variant="h4" component="h1" gutterBottom align="center">
+          Register
+        </Typography>
 
-export default function RegisterPage() {
-  return (
-    <Suspense fallback={
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    }>
-      <RegisterContent />
-    </Suspense>
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }} align="center">
+            {error}
+          </Typography>
+        )}
+
+        <form onSubmit={handleSubmit(handleFormSubmit)}>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 3,
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+            }}
+          >
+            <TextField
+              fullWidth
+              label="First Name"
+              {...register('first_name')}
+              error={!!errors.first_name}
+              helperText={errors.first_name?.message}
+            />
+            <TextField
+              fullWidth
+              label="Last Name"
+              {...register('last_name')}
+              error={!!errors.last_name}
+              helperText={errors.last_name?.message}
+            />
+            <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                {...register('email')}
+                error={!!errors.email}
+                helperText={errors.email?.message}
+              />
+            </Box>
+            <TextField
+              fullWidth
+              label="Password"
+              type="password"
+              {...register('password')}
+              error={!!errors.password}
+              helperText={errors.password?.message}
+            />
+            <TextField
+              fullWidth
+              label="Confirm Password"
+              type="password"
+              {...register('confirm_password')}
+              error={!!errors.confirm_password}
+              helperText={errors.confirm_password?.message}
+            />
+            <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}>
+              <TextField
+                fullWidth
+                label="Broker Company"
+                {...register('broker_company')}
+                error={!!errors.broker_company}
+                helperText={errors.broker_company?.message}
+              />
+            </Box>
+            <TextField
+              fullWidth
+              label="TR Name"
+              {...register('tr_name')}
+              error={!!errors.tr_name}
+              helperText={errors.tr_name?.message}
+            />
+            <TextField
+              fullWidth
+              label="TR License Number"
+              {...register('tr_license_number')}
+              error={!!errors.tr_license_number}
+              helperText={errors.tr_license_number?.message}
+            />
+            <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}>
+              <TextField
+                fullWidth
+                label="TR Phone Number"
+                {...register('tr_phone_number')}
+                error={!!errors.tr_phone_number}
+                helperText={errors.tr_phone_number?.message}
+              />
+            </Box>
+            <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1' }, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                size="large"
+                disabled={isLoading}
+                sx={{ minWidth: 200 }}
+              >
+                {isLoading ? <CircularProgress size={24} /> : 'Register'}
+              </Button>
+              <Typography>
+                Already have an account?{' '}
+                <MuiLink component={Link} href="/login">
+                  Login here
+                </MuiLink>
+              </Typography>
+            </Box>
+          </Box>
+        </form>
+      </Paper>
+    </Box>
   );
 } 

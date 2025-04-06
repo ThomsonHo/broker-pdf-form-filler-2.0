@@ -13,9 +13,14 @@ import {
   MenuItem,
   Chip,
   CircularProgress,
-  Alert
+  Alert,
+  Checkbox,
+  Button,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import { FormTemplate, pdfFormService } from '@/services/pdfFormService';
+import SearchIcon from '@mui/icons-material/Search';
 
 interface FormTemplateSelectorProps {
   onTemplatesSelected: (templates: FormTemplate[]) => void;
@@ -30,6 +35,7 @@ export const FormTemplateSelector: React.FC<FormTemplateSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadTemplates();
@@ -63,6 +69,18 @@ export const FormTemplateSelector: React.FC<FormTemplateSelectorProps> = ({
   };
 
   const categories = Array.from(new Set(templates.map(t => t.category)));
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSubmit = () => {
+    // Implementation of handleSubmit
+  };
+
+  const filteredTemplates = templates.filter(template =>
+    template.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -98,43 +116,88 @@ export const FormTemplateSelector: React.FC<FormTemplateSelectorProps> = ({
         </Select>
       </FormControl>
 
-      <Grid container spacing={2}>
-        {templates.map((template) => {
-          const isSelected = selectedTemplates.some(t => t.id === template.id);
-          return (
-            <Grid item xs={12} sm={6} md={4} key={template.id}>
-              <Card
-                sx={{
-                  cursor: 'pointer',
-                  border: isSelected ? '2px solid #1976d2' : '1px solid #e0e0e0',
-                  '&:hover': {
-                    borderColor: '#1976d2',
-                    boxShadow: 3
-                  }
-                }}
-                onClick={() => handleTemplateClick(template)}
-              >
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {template.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {template.description}
-                  </Typography>
-                  <Box mt={1}>
-                    <Chip
-                      label={template.category}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          );
-        })}
-      </Grid>
+      <Box>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ gridColumn: 'span 12' }}>
+            <TextField
+              fullWidth
+              placeholder="Search templates..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+            gap: 2,
+            mt: 2,
+          }}
+        >
+          {filteredTemplates.map((template) => {
+            const isSelected = selectedTemplates.some(t => t.id === template.id);
+            return (
+              <Box key={template.id}>
+                <Card
+                  sx={{
+                    cursor: 'pointer',
+                    height: '100%',
+                    bgcolor: isSelected ? 'action.selected' : undefined,
+                  }}
+                  onClick={() => handleTemplateClick(template)}
+                >
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="h6" gutterBottom>
+                          {template.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {template.description}
+                        </Typography>
+                      </Box>
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTemplateClick(template);
+                        }}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Box>
+            );
+          })}
+        </Box>
+
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSubmit}
+            disabled={selectedTemplates.length === 0}
+          >
+            Generate Forms ({selectedTemplates.length})
+          </Button>
+        </Box>
+      </Box>
     </Box>
   );
 }; 

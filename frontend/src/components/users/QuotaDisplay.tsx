@@ -69,12 +69,12 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ showTitle = true }) 
         </Typography>
       )}
       
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
+        <Box>
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="subtitle1">Daily Usage</Typography>
-              <Typography variant="body2">
+              <Typography variant="subtitle1" color="text.secondary">
                 {quotaUsage.daily_usage} / {quotaUsage.daily_quota}
               </Typography>
             </Box>
@@ -94,13 +94,13 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ showTitle = true }) 
               </Typography>
             )}
           </Box>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={6}>
+        <Box>
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="subtitle1">Monthly Usage</Typography>
-              <Typography variant="body2">
+              <Typography variant="subtitle1" color="text.secondary">
                 {quotaUsage.monthly_usage} / {quotaUsage.monthly_quota}
               </Typography>
             </Box>
@@ -120,8 +120,8 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ showTitle = true }) 
               </Typography>
             )}
           </Box>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
       
       <Divider sx={{ my: 2 }} />
       

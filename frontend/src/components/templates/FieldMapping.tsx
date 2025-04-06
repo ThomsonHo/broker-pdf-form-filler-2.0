@@ -24,37 +24,55 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  SelectChangeEvent,
 } from '@mui/material';
 import {
   DragIndicator as DragIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { templateService } from '@/services/templateService';
+import { FieldMapping as FieldMappingType } from '@/services/templateService';
+
+interface ExtendedFieldMappingType extends FieldMappingType {
+  validation_rules?: string;
+}
 
 const fieldMappingSchema = yup.object().shape({
   pdf_field_name: yup.string().required('PDF field name is required'),
   system_field_name: yup.string().required('System field name is required'),
   field_type: yup.string().required('Field type is required'),
-  transformation_rule: yup.string(),
+  validation_rules: yup.string(),
 });
 
 type FieldMappingFormData = yup.InferType<typeof fieldMappingSchema>;
 
 interface FieldMappingProps {
   templateId: string;
-  onMappingUpdate?: () => void;
+  fieldMappings: ExtendedFieldMappingType[];
+  onSave: (mappings: ExtendedFieldMappingType[]) => void;
 }
 
-export const FieldMapping: React.FC<FieldMappingProps> = ({ templateId, onMappingUpdate }) => {
-  const [mappings, setMappings] = useState<any[]>([]);
+export const FieldMapping: React.FC<FieldMappingProps> = ({
+  templateId,
+  fieldMappings,
+  onSave,
+}) => {
+  const [mappings, setMappings] = useState<ExtendedFieldMappingType[]>(fieldMappings);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedMapping, setSelectedMapping] = useState<any | null>(null);
+  const [selectedMapping, setSelectedMapping] = useState<ExtendedFieldMappingType | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -63,6 +81,13 @@ export const FieldMapping: React.FC<FieldMappingProps> = ({ templateId, onMappin
     open: false,
     message: '',
     severity: 'info',
+  });
+
+  const [formData, setFormData] = useState({
+    pdf_field_name: '',
+    system_field_name: '',
+    field_type: '',
+    validation_rules: '',
   });
 
   const {
@@ -95,10 +120,15 @@ export const FieldMapping: React.FC<FieldMappingProps> = ({ templateId, onMappin
     fetchMappings();
   }, [templateId]);
 
-  const handleOpenDialog = (mapping?: any) => {
+  const handleOpenDialog = (mapping?: ExtendedFieldMappingType) => {
     if (mapping) {
       setSelectedMapping(mapping);
-      reset(mapping);
+      setFormData({
+        pdf_field_name: mapping.pdf_field_name,
+        system_field_name: mapping.system_field_name,
+        field_type: mapping.field_type,
+        validation_rules: mapping.validation_rules || '',
+      });
     } else {
       setSelectedMapping(null);
       reset({});
@@ -112,26 +142,38 @@ export const FieldMapping: React.FC<FieldMappingProps> = ({ templateId, onMappin
     reset({});
   };
 
-  const handleFormSubmit = async (data: FieldMappingFormData) => {
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<string>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSave = async () => {
     try {
+      await fieldMappingSchema.validate(formData);
       if (selectedMapping) {
-        await templateService.updateFieldMapping(templateId, selectedMapping.id, data);
-        setSnackbar({
-          open: true,
-          message: 'Field mapping updated successfully',
-          severity: 'success',
-        });
+        await templateService.updateFieldMapping(templateId, selectedMapping.id, formData);
       } else {
-        await templateService.createFieldMapping(templateId, data);
-        setSnackbar({
-          open: true,
-          message: 'Field mapping created successfully',
-          severity: 'success',
-        });
+        await templateService.createFieldMapping(templateId, formData);
       }
+      setSnackbar({
+        open: true,
+        message: `Field mapping ${selectedMapping ? 'updated' : 'created'} successfully`,
+        severity: 'success',
+      });
       handleCloseDialog();
       fetchMappings();
-      if (onMappingUpdate) onMappingUpdate();
+      onSave(mappings);
     } catch (error) {
       console.error('Error saving field mapping:', error);
       setSnackbar({
@@ -152,7 +194,7 @@ export const FieldMapping: React.FC<FieldMappingProps> = ({ templateId, onMappin
           severity: 'success',
         });
         fetchMappings();
-        if (onMappingUpdate) onMappingUpdate();
+        onSave(mappings);
       } catch (error) {
         console.error('Error deleting field mapping:', error);
         setSnackbar({
@@ -178,110 +220,117 @@ export const FieldMapping: React.FC<FieldMappingProps> = ({ templateId, onMappin
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5">Field Mappings</Typography>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">Field Mappings</Typography>
         <Button
           variant="contained"
+          color="primary"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
         >
-          Add Mapping
+          Add Field Mapping
         </Button>
       </Box>
 
-      <Paper>
-        <List>
-          {mappings.map((mapping) => (
-            <ListItem
-              key={mapping.id}
-              secondaryAction={
-                <Box>
-                  <IconButton
-                    edge="end"
-                    aria-label="edit"
-                    onClick={() => handleOpenDialog(mapping)}
-                  >
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>PDF Field Name</TableCell>
+              <TableCell>System Field Name</TableCell>
+              <TableCell>Field Type</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {mappings.map((mapping) => (
+              <TableRow key={mapping.id}>
+                <TableCell>{mapping.pdf_field_name}</TableCell>
+                <TableCell>{mapping.system_field_name}</TableCell>
+                <TableCell>{mapping.field_type}</TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleOpenDialog(mapping)} size="small">
                     <EditIcon />
                   </IconButton>
-                  <IconButton
-                    edge="end"
-                    aria-label="delete"
-                    onClick={() => handleDeleteMapping(mapping.id)}
-                  >
+                  <IconButton onClick={() => handleDeleteMapping(mapping.id)} size="small">
                     <DeleteIcon />
                   </IconButton>
-                </Box>
-              }
-            >
-              <ListItemIcon>
-                <DragIcon />
-              </ListItemIcon>
-              <ListItemText
-                primary={mapping.pdf_field_name}
-                secondary={`Maps to: ${mapping.system_field_name} (${mapping.field_type})`}
-              />
-            </ListItem>
-          ))}
-        </List>
-      </Paper>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
           {selectedMapping ? 'Edit Field Mapping' : 'Add Field Mapping'}
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseDialog}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="PDF Field Name"
-                  {...register('pdf_field_name')}
-                  error={!!errors.pdf_field_name}
-                  helperText={errors.pdf_field_name?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="System Field Name"
-                  {...register('system_field_name')}
-                  error={!!errors.system_field_name}
-                  helperText={errors.system_field_name?.message}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!errors.field_type}>
-                  <InputLabel>Field Type</InputLabel>
-                  <Select
-                    label="Field Type"
-                    {...register('field_type')}
-                  >
-                    <MenuItem value="text">Text</MenuItem>
-                    <MenuItem value="number">Number</MenuItem>
-                    <MenuItem value="date">Date</MenuItem>
-                    <MenuItem value="boolean">Boolean</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Transformation Rule"
-                  {...register('transformation_rule')}
-                  error={!!errors.transformation_rule}
-                  helperText={errors.transformation_rule?.message}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button type="submit" variant="contained">
-              {selectedMapping ? 'Update' : 'Create'}
-            </Button>
-          </DialogActions>
-        </form>
+        <DialogContent>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2,
+              gridTemplateColumns: '1fr',
+              pt: 2,
+            }}
+          >
+            <TextField
+              fullWidth
+              label="PDF Field Name"
+              name="pdf_field_name"
+              value={formData.pdf_field_name}
+              onChange={handleTextChange}
+            />
+            <TextField
+              fullWidth
+              label="System Field Name"
+              name="system_field_name"
+              value={formData.system_field_name}
+              onChange={handleTextChange}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Field Type</InputLabel>
+              <Select
+                name="field_type"
+                value={formData.field_type}
+                onChange={handleSelectChange}
+                label="Field Type"
+              >
+                <MenuItem value="text">Text</MenuItem>
+                <MenuItem value="number">Number</MenuItem>
+                <MenuItem value="date">Date</MenuItem>
+                <MenuItem value="checkbox">Checkbox</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Validation Rules"
+              name="validation_rules"
+              value={formData.validation_rules}
+              onChange={handleTextChange}
+              multiline
+              rows={3}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleSave} variant="contained" color="primary">
+            {selectedMapping ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Snackbar

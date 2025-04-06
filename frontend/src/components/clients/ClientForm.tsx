@@ -19,7 +19,8 @@ import {
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import { Client, createClient, updateClient, fetchClientById } from '../../services/clientService';
 
 interface ClientFormProps {
@@ -107,10 +108,10 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
     }
   };
 
-  const handleDateChange = (date: Date | null) => {
-    if (date && !isNaN(date.getTime())) {
-      // Ensure we're working with a valid date
-      const formattedDate = date.toISOString().split('T')[0];
+  const handleDateChange = (date: dayjs.Dayjs | null) => {
+    if (date && date.isValid()) {
+      // Format date as YYYY-MM-DD
+      const formattedDate = date.format('YYYY-MM-DD');
       setFormData({
         ...formData,
         date_of_birth: formattedDate,
@@ -247,16 +248,22 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
       )}
 
       <form onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: 3,
+          }}
+        >
           {/* Personal Information Section */}
-          <Grid item xs={12}>
+          <Box sx={{ gridColumn: 'span 12' }}>
             <Typography variant="h6" gutterBottom>
               Personal Information
             </Typography>
             <Divider sx={{ mb: 2 }} />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="First Name"
@@ -267,9 +274,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.first_name}
               required
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Last Name"
@@ -280,13 +287,13 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.last_name}
               required
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
                 label="Date of Birth"
-                value={formData.date_of_birth ? new Date(formData.date_of_birth) : null}
+                value={formData.date_of_birth ? dayjs(formData.date_of_birth) : null}
                 onChange={handleDateChange}
                 slotProps={{
                   textField: {
@@ -298,9 +305,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
                 }}
               />
             </LocalizationProvider>
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <FormControl fullWidth error={!!errors.gender}>
               <InputLabel>Gender</InputLabel>
               <Select
@@ -315,9 +322,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               </Select>
               {errors.gender && <FormHelperText>{errors.gender}</FormHelperText>}
             </FormControl>
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <FormControl fullWidth error={!!errors.marital_status}>
               <InputLabel>Marital Status</InputLabel>
               <Select
@@ -333,9 +340,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               </Select>
               {errors.marital_status && <FormHelperText>{errors.marital_status}</FormHelperText>}
             </FormControl>
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="ID Number"
@@ -346,9 +353,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.id_number}
               required
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Nationality"
@@ -359,17 +366,17 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.nationality}
               required
             />
-          </Grid>
+          </Box>
 
           {/* Contact Information Section */}
-          <Grid item xs={12}>
+          <Box sx={{ gridColumn: 'span 12' }}>
             <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
               Contact Information
             </Typography>
             <Divider sx={{ mb: 2 }} />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Phone Number"
@@ -380,9 +387,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.phone_number}
               required={!formData.email}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Email"
@@ -394,9 +401,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.email}
               required={!formData.phone_number}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12}>
+          <Box sx={{ gridColumn: 'span 12' }}>
             <TextField
               fullWidth
               label="Address Line 1"
@@ -407,9 +414,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.address_line1}
               required
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12}>
+          <Box sx={{ gridColumn: 'span 12' }}>
             <TextField
               fullWidth
               label="Address Line 2"
@@ -417,9 +424,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               value={formData.address_line2}
               onChange={handleChange}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="City"
@@ -430,9 +437,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.city}
               required
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="State/Province"
@@ -443,9 +450,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.state}
               required
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Postal Code"
@@ -456,9 +463,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.postal_code}
               required
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Country"
@@ -469,17 +476,17 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               helperText={errors.country}
               required
             />
-          </Grid>
+          </Box>
 
           {/* Employment Information Section */}
-          <Grid item xs={12}>
+          <Box sx={{ gridColumn: 'span 12' }}>
             <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
               Employment Information
             </Typography>
             <Divider sx={{ mb: 2 }} />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Employer"
@@ -487,9 +494,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               value={formData.employer}
               onChange={handleChange}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Occupation"
@@ -497,9 +504,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               value={formData.occupation}
               onChange={handleChange}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12}>
+          <Box sx={{ gridColumn: 'span 12' }}>
             <TextField
               fullWidth
               label="Work Address"
@@ -507,17 +514,17 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               value={formData.work_address}
               onChange={handleChange}
             />
-          </Grid>
+          </Box>
 
           {/* Financial Information Section */}
-          <Grid item xs={12}>
+          <Box sx={{ gridColumn: 'span 12' }}>
             <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
               Financial Information
             </Typography>
             <Divider sx={{ mb: 2 }} />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Annual Income"
@@ -529,9 +536,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
                 startAdornment: <span>$</span>,
               }}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Monthly Expenses"
@@ -543,9 +550,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
                 startAdornment: <span>$</span>,
               }}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Tax Residency"
@@ -553,9 +560,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               value={formData.tax_residency}
               onChange={handleChange}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Payment Method"
@@ -563,9 +570,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               value={formData.payment_method}
               onChange={handleChange}
             />
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <TextField
               fullWidth
               label="Payment Period"
@@ -573,10 +580,10 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               value={formData.payment_period}
               onChange={handleChange}
             />
-          </Grid>
+          </Box>
 
           {/* Form Actions */}
-          <Grid item xs={12} sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ gridColumn: 'span 12', mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               onClick={onCancel}
@@ -593,8 +600,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
             >
               {saving ? <CircularProgress size={24} /> : clientId ? 'Update Client' : 'Add Client'}
             </Button>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </form>
     </Paper>
   );

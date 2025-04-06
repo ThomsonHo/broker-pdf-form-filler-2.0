@@ -182,48 +182,57 @@ const ClientList: React.FC<ClientListProps> = ({
   return (
     <Box sx={{ width: '100%' }}>
       <Paper sx={{ width: '100%', mb: 2, p: 2 }}>
-        <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={6}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: 2,
+            mb: 2,
+            alignItems: 'center',
+          }}
+        >
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
             <Typography variant="h5" component="h2">
               Clients
             </Typography>
-          </Grid>
-          <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          </Box>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' }, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               variant="contained"
               color="primary"
               startIcon={<AddIcon />}
-              onClick={onAddClient}
-              sx={{ mr: 1 }}
+              onClick={handleAddClient}
             >
               Add Client
             </Button>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              onClick={handleExportClients}
-            >
-              Export
-            </Button>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
-        <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={6}>
-            <form onSubmit={handleSearchSubmit}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Search clients..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                InputProps={{
-                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-              />
-            </form>
-          </Grid>
-          <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: 2,
+            mb: 2,
+            alignItems: 'center',
+          }}
+        >
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
+            <TextField
+              fullWidth
+              placeholder="Search clients..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' }, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               startIcon={<FilterListIcon />}
@@ -231,12 +240,19 @@ const ClientList: React.FC<ClientListProps> = ({
             >
               Filters
             </Button>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         {showFilters && (
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={4}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(12, 1fr)',
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 4' } }}>
               <FormControl fullWidth>
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -249,8 +265,8 @@ const ClientList: React.FC<ClientListProps> = ({
                   <MenuItem value="false">Inactive</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </Box>
+            <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 4' } }}>
               <FormControl fullWidth>
                 <InputLabel>Nationality</InputLabel>
                 <Select
@@ -262,8 +278,8 @@ const ClientList: React.FC<ClientListProps> = ({
                   {/* Add nationality options here */}
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </Box>
+            <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 4' } }}>
               <FormControl fullWidth>
                 <InputLabel>Country</InputLabel>
                 <Select
@@ -275,8 +291,8 @@ const ClientList: React.FC<ClientListProps> = ({
                   {/* Add country options here */}
                 </Select>
               </FormControl>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         )}
 
         <TableContainer>

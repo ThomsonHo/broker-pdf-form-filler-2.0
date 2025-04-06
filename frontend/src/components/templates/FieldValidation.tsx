@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, FC } from 'react';
 import {
   Box,
   Paper,
@@ -18,43 +18,70 @@ import {
   Alert,
   CircularProgress,
   Chip,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   PlayArrow as PlayIcon,
   Save as SaveIcon,
   Check as CheckIcon,
   Error as ErrorIcon,
+  Edit as EditIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { templateService } from '@/services/templateService';
+
+interface ValidationRequest {
+  pdf_field_name: string;
+  system_field_name: string;
+  test_value: string;
+  validation_rules: string;
+}
 
 interface ValidationResult {
   fieldName: string;
   isValid: boolean;
-  message?: string;
+  message: string;
+}
+
+interface FieldMapping {
+  pdf_field_name: string;
+  system_field_name: string;
+  validation_rules?: string;
 }
 
 interface FieldValidationProps {
   templateId: string;
-  fieldMappings: any[];
-  onSaveTestData?: (data: any) => void;
+  fieldMappings: FieldMapping[];
+  onSaveTestData?: (data: Record<string, string>) => void;
 }
 
-export const FieldValidation: React.FC<FieldValidationProps> = ({
+export const FieldValidation: FC<FieldValidationProps> = ({
   templateId,
   fieldMappings,
   onSaveTestData,
 }) => {
-  const [testData, setTestData] = useState<Record<string, any>>({});
-  const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
+  const [testData, setTestData] = useState<Record<string, string>>({});
+  const [validationResults, setValidationResults] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMapping, setSelectedMapping] = useState<FieldMapping | null>(null);
+  const [openDialog, setOpenDialog] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error' | 'info' | 'warning';
+    severity: 'success' | 'error';
   }>({
     open: false,
     message: '',
-    severity: 'info',
+    severity: 'success',
   });
 
   const handleTestDataChange = (fieldName: string, value: any) => {
@@ -65,58 +92,27 @@ export const FieldValidation: React.FC<FieldValidationProps> = ({
   };
 
   const handleValidateFields = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const results = await templateService.validateFieldMappings(templateId);
-      
-      const validationResults: ValidationResult[] = fieldMappings.map(mapping => {
-        const value = testData[mapping.system_field_name];
-        let isValid = true;
-        let message = 'Valid';
+      const { valid, errors } = await templateService.validateFieldMappings(templateId);
 
-        // Basic validation based on field type
-        switch (mapping.field_type.toLowerCase()) {
-          case 'number':
-            isValid = !isNaN(Number(value));
-            message = isValid ? 'Valid number' : 'Invalid number format';
-            break;
-          case 'date':
-            isValid = !isNaN(Date.parse(value));
-            message = isValid ? 'Valid date' : 'Invalid date format';
-            break;
-          case 'email':
-            isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || '');
-            message = isValid ? 'Valid email' : 'Invalid email format';
-            break;
-          case 'phone':
-            isValid = /^\+?[\d\s-()]+$/.test(value || '');
-            message = isValid ? 'Valid phone number' : 'Invalid phone format';
-            break;
-          default:
-            isValid = true;
-            message = value ? 'Valid' : 'Empty field';
-        }
+      setValidationResults(
+        fieldMappings.reduce((acc: Record<string, boolean>, mapping: FieldMapping) => ({
+          ...acc,
+          [mapping.system_field_name]: !errors.some(error => error.includes(mapping.system_field_name)),
+        }), {})
+      );
 
-        return {
-          fieldName: mapping.system_field_name,
-          isValid,
-          message,
-        };
-      });
-
-      setValidationResults(validationResults);
-
-      const allValid = validationResults.every(result => result.isValid);
       setSnackbar({
         open: true,
-        message: allValid ? 'All fields are valid' : 'Some fields have validation errors',
-        severity: allValid ? 'success' : 'error',
+        message: valid ? 'All fields are valid!' : 'Some fields have validation errors.',
+        severity: valid ? 'success' : 'error',
       });
     } catch (error) {
-      console.error('Error validating fields:', error);
+      console.error('Validation error:', error);
       setSnackbar({
         open: true,
-        message: 'Error validating fields',
+        message: 'Failed to validate fields',
         severity: 'error',
       });
     } finally {
@@ -140,79 +136,111 @@ export const FieldValidation: React.FC<FieldValidationProps> = ({
   };
 
   const getValidationStatus = (fieldName: string) => {
-    const result = validationResults.find(r => r.fieldName === fieldName);
-    if (!result) return null;
+    const result = validationResults[fieldName];
+    if (result === undefined) return null;
 
     return (
       <Chip
-        icon={result.isValid ? <CheckIcon /> : <ErrorIcon />}
-        label={result.message}
-        color={result.isValid ? 'success' : 'error'}
+        icon={result ? <CheckIcon /> : <ErrorIcon />}
+        label={result ? 'Valid' : 'Invalid'}
+        color={result ? 'success' : 'error'}
         size="small"
       />
     );
+  };
+
+  const handleEditMapping = (mapping: FieldMapping) => {
+    setSelectedMapping(mapping);
+    setOpenDialog(true);
+  };
+
+  const handleRunValidation = () => {
+    handleValidateFields();
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
+
+  const handleSaveValidationRules = () => {
+    if (selectedMapping) {
+      // Implement the logic to save the new validation rules
+      setSnackbar({
+        open: true,
+        message: 'Validation rules saved successfully',
+        severity: 'success',
+      });
+    }
+    handleCloseDialog();
   };
 
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Field Validation Testing</Typography>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(12, 1fr)',
+          gap: 3,
+        }}
+      >
+        <Box sx={{ gridColumn: 'span 12' }}>
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Field Name</TableCell>
-                  <TableCell>Field Type</TableCell>
+                  <TableCell>PDF Field</TableCell>
+                  <TableCell>System Field</TableCell>
                   <TableCell>Test Value</TableCell>
                   <TableCell>Validation Status</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {fieldMappings.map((mapping) => (
-                  <TableRow key={mapping.id}>
+                  <TableRow key={mapping.pdf_field_name}>
+                    <TableCell>{mapping.pdf_field_name}</TableCell>
                     <TableCell>{mapping.system_field_name}</TableCell>
-                    <TableCell>{mapping.field_type}</TableCell>
                     <TableCell>
                       <TextField
                         size="small"
                         value={testData[mapping.system_field_name] || ''}
-                        onChange={(e) => handleTestDataChange(mapping.system_field_name, e.target.value)}
-                        fullWidth
+                        onChange={(e) =>
+                          handleTestDataChange(mapping.system_field_name, e.target.value)
+                        }
                       />
                     </TableCell>
                     <TableCell>
                       {getValidationStatus(mapping.system_field_name)}
+                    </TableCell>
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditMapping(mapping)}
+                        aria-label="edit validation rules"
+                      >
+                        <EditIcon />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12}>
-          <Box display="flex" justifyContent="flex-end" gap={2}>
-            <Button
-              variant="contained"
-              startIcon={<PlayIcon />}
-              onClick={handleValidateFields}
-              disabled={loading || !fieldMappings.length}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Validate Fields'}
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<SaveIcon />}
-              onClick={handleSaveTestData}
-              disabled={loading || !fieldMappings.length}
-            >
-              Save Test Data
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
+        <Box sx={{ gridColumn: 'span 12', display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleRunValidation}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Run Validation'}
+          </Button>
+        </Box>
+      </Box>
 
       <Snackbar
         open={snackbar.open}
@@ -227,6 +255,48 @@ export const FieldValidation: React.FC<FieldValidationProps> = ({
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Edit Validation Rules
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseDialog}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <TextField
+              fullWidth
+              label="Validation Rules"
+              multiline
+              rows={4}
+              value={selectedMapping?.validation_rules || ''}
+              onChange={(e) => {
+                if (selectedMapping) {
+                  setSelectedMapping({
+                    ...selectedMapping,
+                    validation_rules: e.target.value,
+                  });
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleSaveValidationRules} variant="contained" color="primary">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }; 

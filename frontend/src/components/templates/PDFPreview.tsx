@@ -22,16 +22,13 @@ import { Save as SaveIcon } from '@mui/icons-material';
 import { FieldMapping } from '@/services/templateService';
 
 interface PDFPreviewProps {
-  templateId: string;
-  fieldMappings: FieldMapping[];
-  onSaveTestData?: (data: Record<string, string>) => void;
+  url: string;
+  templateId?: string;
+  fieldMappings?: any[];
+  onSaveTestData?: (data: any) => void;
 }
 
-export const PDFPreview: React.FC<PDFPreviewProps> = ({
-  templateId,
-  fieldMappings,
-  onSaveTestData,
-}) => {
+export const PDFPreview: React.FC<PDFPreviewProps> = ({ url, templateId, fieldMappings, onSaveTestData }) => {
   const [testData, setTestData] = useState<Record<string, string>>({});
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -66,65 +63,12 @@ export const PDFPreview: React.FC<PDFPreviewProps> = ({
   };
 
   return (
-    <Box sx={{ width: '100%', mt: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Field Mappings Preview
-      </Typography>
-      
-      <TableContainer component={Paper} sx={{ mt: 2 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>PDF Field Name</TableCell>
-              <TableCell>System Field Name</TableCell>
-              <TableCell>Field Type</TableCell>
-              <TableCell>Test Value</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {fieldMappings.map((mapping) => (
-              <TableRow key={mapping.id}>
-                <TableCell>{mapping.pdf_field_name}</TableCell>
-                <TableCell>{mapping.system_field_name}</TableCell>
-                <TableCell>{mapping.field_type}</TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
-                    value={testData[mapping.pdf_field_name] || ''}
-                    onChange={(e) => handleTestDataChange(mapping.pdf_field_name, e.target.value)}
-                    fullWidth
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      
-      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={handleSaveTestData}
-          disabled={Object.keys(testData).length === 0}
-        >
-          Save Test Data
-        </Button>
-      </Box>
-      
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+    <Box sx={{ width: '100%', height: '100%' }}>
+      <iframe
+        src={url}
+        style={{ width: '100%', height: '100%', border: 'none' }}
+        title="PDF Preview"
+      />
     </Box>
   );
 }; 

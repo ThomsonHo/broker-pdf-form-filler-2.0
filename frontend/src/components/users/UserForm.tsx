@@ -13,6 +13,7 @@ import {
   MenuItem,
   Grid,
   Typography,
+  FormHelperText,
 } from '@mui/material';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -125,115 +126,119 @@ export const UserForm: React.FC<UserFormProps> = ({
       <DialogTitle>{title}</DialogTitle>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <DialogContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+            <Box>
               <Controller
                 name="first_name"
                 control={control}
-                render={({ field }) => (
+                render={({ field, fieldState: { error } }) => (
                   <TextField
                     {...field}
                     label="First Name"
                     fullWidth
-                    error={!!errors.first_name}
-                    helperText={errors.first_name?.message}
+                    error={!!error}
+                    helperText={error?.message}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+
+            <Box>
               <Controller
                 name="last_name"
                 control={control}
-                render={({ field }) => (
+                render={({ field, fieldState: { error } }) => (
                   <TextField
                     {...field}
                     label="Last Name"
                     fullWidth
-                    error={!!errors.last_name}
-                    helperText={errors.last_name?.message}
+                    error={!!error}
+                    helperText={error?.message}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12}>
+            </Box>
+
+            <Box sx={{ gridColumn: { xs: '1', sm: 'span 2' } }}>
               <Controller
                 name="email"
                 control={control}
-                render={({ field }) => (
+                render={({ field, fieldState: { error } }) => (
                   <TextField
                     {...field}
                     label="Email"
                     fullWidth
-                    error={!!errors.email}
-                    helperText={errors.email?.message}
+                    error={!!error}
+                    helperText={error?.message}
                     disabled={isEdit}
                   />
                 )}
               />
-            </Grid>
-            {!isEdit && (
-              <>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="password"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Password"
-                        type="password"
-                        fullWidth
-                        error={!!errors.password}
-                        helperText={errors.password?.message}
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Controller
-                    name="password2"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Confirm Password"
-                        type="password"
-                        fullWidth
-                        error={!!errors.password2}
-                        helperText={errors.password2?.message}
-                      />
-                    )}
-                  />
-                </Grid>
-              </>
-            )}
-            <Grid item xs={12} sm={6}>
+            </Box>
+
+            <Box sx={{ gridColumn: { xs: '1', sm: 'span 2' } }}>
               <Controller
                 name="role"
                 control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.role}>
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
                     <InputLabel>Role</InputLabel>
                     <Select {...field} label="Role">
                       <MenuItem value="admin">Admin</MenuItem>
                       <MenuItem value="standard">Standard</MenuItem>
                     </Select>
-                    {errors.role && (
-                      <Typography variant="caption" color="error">
-                        {errors.role.message}
-                      </Typography>
+                    {error && (
+                      <FormHelperText>{error.message}</FormHelperText>
                     )}
                   </FormControl>
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+
+            {!isEdit && (
+              <>
+                <Box>
+                  <Controller
+                    name="password"
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <TextField
+                        {...field}
+                        type="password"
+                        label="Password"
+                        fullWidth
+                        error={!!error}
+                        helperText={error?.message}
+                      />
+                    )}
+                  />
+                </Box>
+
+                <Box>
+                  <Controller
+                    name="password2"
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <TextField
+                        {...field}
+                        type="password"
+                        label="Confirm Password"
+                        fullWidth
+                        error={!!error}
+                        helperText={error?.message}
+                      />
+                    )}
+                  />
+                </Box>
+              </>
+            )}
+
+            <Box sx={{ gridColumn: { xs: '1', sm: 'span 2' } }}>
               <Controller
                 name="broker_company"
                 control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.broker_company}>
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
                     <InputLabel>Broker Company</InputLabel>
                     <Select {...field} label="Broker Company">
                       {brokerCompanies.map((company) => (
@@ -242,66 +247,68 @@ export const UserForm: React.FC<UserFormProps> = ({
                         </MenuItem>
                       ))}
                     </Select>
-                    {errors.broker_company && (
-                      <Typography variant="caption" color="error">
-                        {errors.broker_company.message}
-                      </Typography>
+                    {error && (
+                      <FormHelperText>{error.message}</FormHelperText>
                     )}
                   </FormControl>
                 )}
               />
-            </Grid>
-            <Grid item xs={12}>
+            </Box>
+
+            <Box sx={{ gridColumn: { xs: '1', sm: 'span 2' } }}>
               <Typography variant="subtitle1" gutterBottom>
                 TR Information (Optional)
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </Box>
+
+            <Box>
               <Controller
                 name="tr_name"
                 control={control}
-                render={({ field }) => (
+                render={({ field, fieldState: { error } }) => (
                   <TextField
                     {...field}
                     label="TR Name"
                     fullWidth
-                    error={!!errors.tr_name}
-                    helperText={errors.tr_name?.message}
+                    error={!!error}
+                    helperText={error?.message}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </Box>
+
+            <Box>
               <Controller
                 name="tr_license_number"
                 control={control}
-                render={({ field }) => (
+                render={({ field, fieldState: { error } }) => (
                   <TextField
                     {...field}
                     label="TR License Number"
                     fullWidth
-                    error={!!errors.tr_license_number}
-                    helperText={errors.tr_license_number?.message}
+                    error={!!error}
+                    helperText={error?.message}
                   />
                 )}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </Box>
+
+            <Box>
               <Controller
                 name="tr_phone_number"
                 control={control}
-                render={({ field }) => (
+                render={({ field, fieldState: { error } }) => (
                   <TextField
                     {...field}
                     label="TR Phone Number"
                     fullWidth
-                    error={!!errors.tr_phone_number}
-                    helperText={errors.tr_phone_number?.message}
+                    error={!!error}
+                    helperText={error?.message}
                   />
                 )}
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>

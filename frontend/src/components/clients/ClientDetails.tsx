@@ -5,7 +5,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   Chip,
   CircularProgress,
   Divider,
@@ -123,213 +122,218 @@ const ClientDetails: React.FC<ClientDetailsProps> = ({ clientId, onEdit, onClose
         </Box>
       </Box>
 
-      <Grid container spacing={3}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(12, 1fr)',
+          gap: 3,
+        }}
+      >
         {/* Personal Information Section */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Typography variant="h6" gutterBottom>
             Personal Information
           </Typography>
           <Divider sx={{ mb: 2 }} />
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Full Name
           </Typography>
           <Typography variant="body1">
             {`${client.first_name} ${client.last_name}`}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Date of Birth
           </Typography>
           <Typography variant="body1">
             {formatDate(client.date_of_birth)}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Gender
           </Typography>
           <Typography variant="body1">
             {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Marital Status
           </Typography>
-          <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
+          <Typography variant="body1">
             {client.marital_status}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             ID Number
           </Typography>
           <Typography variant="body1">
             {client.id_number}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Nationality
           </Typography>
           <Typography variant="body1">
             {client.nationality}
           </Typography>
-        </Grid>
+        </Box>
 
         {/* Contact Information Section */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
             Contact Information
           </Typography>
           <Divider sx={{ mb: 2 }} />
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Phone Number
           </Typography>
           <Typography variant="body1">
             {client.phone_number || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Email
           </Typography>
           <Typography variant="body1">
             {client.email || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Typography variant="subtitle2" color="text.secondary">
             Address
           </Typography>
           <Typography variant="body1">
             {client.address_line1}
-            {client.address_line2 && <br />}
-            {client.address_line2}
+            {client.address_line2 && <>, {client.address_line2}</>}
             <br />
-            {`${client.city}, ${client.state} ${client.postal_code}`}
+            {client.city}, {client.state} {client.postal_code}
             <br />
             {client.country}
           </Typography>
-        </Grid>
+        </Box>
 
         {/* Employment Information Section */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
             Employment Information
           </Typography>
           <Divider sx={{ mb: 2 }} />
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Employer
           </Typography>
           <Typography variant="body1">
             {client.employer || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Occupation
           </Typography>
           <Typography variant="body1">
             {client.occupation || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Typography variant="subtitle2" color="text.secondary">
             Work Address
           </Typography>
           <Typography variant="body1">
             {client.work_address || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
         {/* Financial Information Section */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
             Financial Information
           </Typography>
           <Divider sx={{ mb: 2 }} />
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Annual Income
           </Typography>
           <Typography variant="body1">
             {formatCurrency(client.annual_income)}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Monthly Expenses
           </Typography>
           <Typography variant="body1">
             {formatCurrency(client.monthly_expenses)}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Tax Residency
           </Typography>
           <Typography variant="body1">
             {client.tax_residency || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Payment Method
           </Typography>
           <Typography variant="body1">
             {client.payment_method || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
           <Typography variant="subtitle2" color="text.secondary">
             Payment Period
           </Typography>
           <Typography variant="body1">
             {client.payment_period || 'N/A'}
           </Typography>
-        </Grid>
+        </Box>
 
         {/* Status Section */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
             Status
           </Typography>
           <Divider sx={{ mb: 2 }} />
-        </Grid>
+        </Box>
 
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Chip
             label={client.is_active ? 'Active' : 'Inactive'}
             color={client.is_active ? 'success' : 'default'}
           />
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Paper>
   );
 };

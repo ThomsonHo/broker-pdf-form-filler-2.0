@@ -30,7 +30,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {menuItems.map((item) => (
               <ListItem
                 key={item.href}
-                component={Link}
+                component={Link as any}
                 href={item.href}
                 selected={pathname === item.href}
                 sx={{

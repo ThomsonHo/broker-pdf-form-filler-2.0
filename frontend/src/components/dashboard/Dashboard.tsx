@@ -7,7 +7,8 @@ import {
   Typography, 
   CircularProgress,
   useTheme,
-  Box
+  Box,
+  Button
 } from '@mui/material';
 import { MetricsCard } from './MetricsCard';
 import { QuickAccessPanel } from './QuickAccessPanel';
@@ -29,6 +30,7 @@ interface DashboardData {
     title: string;
     url: string;
     icon: string;
+    description: string;
   }>;
   user_quota: {
     used: number;
@@ -59,7 +61,36 @@ export const Dashboard: React.FC = () => {
             quota_usage: 0,
             metrics_by_type: {},
           },
-          quick_links: [],
+          quick_links: [
+            {
+              id: 1,
+              title: 'Generate Forms',
+              url: '/forms',
+              icon: 'description',
+              description: 'Create and fill PDF forms',
+            },
+            {
+              id: 2,
+              title: 'Manage Clients',
+              url: '/clients',
+              icon: 'people',
+              description: 'View and manage client information',
+            },
+            {
+              id: 3,
+              title: 'Templates',
+              url: '/templates',
+              icon: 'folder',
+              description: 'Manage form templates',
+            },
+            {
+              id: 4,
+              title: 'Reports',
+              url: '/reports',
+              icon: 'assessment',
+              description: 'View analytics and reports',
+            },
+          ],
           user_quota: {
             used: 0,
             total: 0,
@@ -107,48 +138,66 @@ export const Dashboard: React.FC = () => {
         Dashboard
       </Typography>
       
-      <Grid container spacing={3}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(12, 1fr)',
+          gap: 3,
+        }}
+      >
         {/* Quick Access Panel */}
-        <Grid item xs={12}>
+        <Box sx={{ gridColumn: 'span 12' }}>
           <Paper elevation={2}>
             <Box p={2}>
               <QuickAccessPanel links={quick_links || []} />
             </Box>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Metrics Cards */}
-        <Grid item xs={12} md={3}>
-          <MetricsCard
-            title="Total Clients"
-            value={metrics?.total_clients || 0}
-            icon="people"
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <MetricsCard
-            title="Active Clients"
-            value={metrics?.active_clients || 0}
-            icon="people_outline"
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <MetricsCard
-            title="Forms Generated"
-            value={metrics?.forms_generated || 0}
-            icon="description"
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <MetricsCard
-            title="Quota Usage"
-            value={`${Math.round(metrics?.quota_usage || 0)}%`}
-            icon="pie_chart"
-          />
-        </Grid>
+        <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 3' } }}>
+          <Paper elevation={2}>
+            <Box p={2}>
+              <Typography variant="h6" gutterBottom>
+                Total Clients
+              </Typography>
+              <Typography variant="h4">{metrics?.total_clients || 0}</Typography>
+            </Box>
+          </Paper>
+        </Box>
+        <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 3' } }}>
+          <Paper elevation={2}>
+            <Box p={2}>
+              <Typography variant="h6" gutterBottom>
+                Active Clients
+              </Typography>
+              <Typography variant="h4">{metrics?.active_clients || 0}</Typography>
+            </Box>
+          </Paper>
+        </Box>
+        <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 3' } }}>
+          <Paper elevation={2}>
+            <Box p={2}>
+              <Typography variant="h6" gutterBottom>
+                Forms Generated
+              </Typography>
+              <Typography variant="h4">{metrics?.forms_generated || 0}</Typography>
+            </Box>
+          </Paper>
+        </Box>
+        <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 3' } }}>
+          <Paper elevation={2}>
+            <Box p={2}>
+              <Typography variant="h6" gutterBottom>
+                Quota Usage
+              </Typography>
+              <Typography variant="h4">{`${Math.round(metrics?.quota_usage || 0)}%`}</Typography>
+            </Box>
+          </Paper>
+        </Box>
 
         {/* Charts */}
-        <Grid item xs={12} md={8}>
+        <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 8' } }}>
           <Paper elevation={2}>
             <Box p={2}>
               <Typography variant="h6" gutterBottom>
@@ -157,10 +206,10 @@ export const Dashboard: React.FC = () => {
               <FormTypeChart data={metrics?.metrics_by_type || {}} />
             </Box>
           </Paper>
-        </Grid>
+        </Box>
 
         {/* User Quota */}
-        <Grid item xs={12} md={4}>
+        <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
           <Paper elevation={2}>
             <Box p={2}>
               <Typography variant="h6" gutterBottom>
@@ -169,8 +218,8 @@ export const Dashboard: React.FC = () => {
               <QuotaUsage quota={user_quota || { used: 0, total: 0, remaining: 0 }} />
             </Box>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 }; 

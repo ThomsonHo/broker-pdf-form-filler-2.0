@@ -1,274 +1,151 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
   Paper,
+  Avatar,
   TextField,
   Button,
-  Grid,
-  Snackbar,
-  Alert,
   CircularProgress,
-  Avatar,
-  IconButton,
 } from '@mui/material';
-import { Edit as EditIcon, Save as SaveIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { useAuth } from '@/contexts/AuthContext';
-import { userService } from '@/services/userService';
-import * as yup from 'yup';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
+import { useRouter } from 'next/navigation';
 
-interface ProfileFormData {
-  first_name: string;
-  last_name: string;
-  email: string;
-  tr_name: string;
-  tr_license_number: string;
-  tr_phone_number: string;
-  broker_company: string;
-}
-
-const profileSchema = yup.object<ProfileFormData>().shape({
-  first_name: yup.string().required('First name is required'),
-  last_name: yup.string().required('Last name is required'),
-  email: yup.string().email('Invalid email').required('Email is required'),
-  tr_name: yup.string().required('TR name is required'),
-  tr_license_number: yup.string().required('TR license number is required'),
-  tr_phone_number: yup.string().required('TR phone number is required'),
-  broker_company: yup.string().required('Broker company is required'),
-});
-
-function ProfileContent() {
-  const { user, updateUser } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info' | 'warning';
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
+export default function ProfilePage() {
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    first_name: '',
+    last_name: '',
+    broker_company: '',
+    role: '',
   });
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<ProfileFormData>({
-    resolver: yupResolver(profileSchema),
-    defaultValues: {
-      first_name: user?.first_name || '',
-      last_name: user?.last_name || '',
-      email: user?.email || '',
-      tr_name: user?.tr_name || '',
-      tr_license_number: user?.tr_license_number || '',
-      tr_phone_number: user?.tr_phone_number || '',
-      broker_company: user?.broker_company || '',
-    },
-  });
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
+    if (user) {
+      setFormData({
+        email: user.email || '',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        broker_company: user.broker_company || '',
+        role: user.role || '',
+      });
+    }
+  }, [isAuthenticated, user, router]);
 
-  const handleCancel = () => {
-    setIsEditing(false);
-    reset();
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const handleFormSubmit = async (data: ProfileFormData) => {
-    setIsLoading(true);
     try {
-      await updateUser({
-        ...data,
-        id: user?.id || 0,
-        role: user?.role || 'user',
-        is_superuser: user?.is_superuser || false,
-      });
-      setSnackbar({
-        open: true,
-        message: 'Profile updated successfully',
-        severity: 'success',
-      });
-      setIsEditing(false);
+      // TODO: Implement profile update logic
+      console.log('Profile update:', formData);
     } catch (error) {
       console.error('Error updating profile:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error updating profile',
-        severity: 'error',
-      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" gutterBottom>
-            Profile
+      <Typography variant="h4" component="h1" gutterBottom>
+        Profile
+      </Typography>
+
+      <Paper sx={{ p: 3, mt: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+          <Avatar
+            sx={{ width: 100, height: 100, mb: 2 }}
+          >
+            {user?.email?.charAt(0).toUpperCase()}
+          </Avatar>
+          <Typography variant="h6">
+            {user?.email}
           </Typography>
-          {!isEditing ? (
-            <Button
-              startIcon={<EditIcon />}
-              variant="outlined"
-              onClick={handleEdit}
-            >
-              Edit Profile
-            </Button>
-          ) : (
-            <Box>
-              <Button
-                startIcon={<CancelIcon />}
-                variant="outlined"
-                onClick={handleCancel}
-                sx={{ mr: 1 }}
-              >
-                Cancel
-              </Button>
-              <Button
-                startIcon={<SaveIcon />}
-                variant="contained"
-                onClick={handleSubmit(handleFormSubmit)}
-                disabled={isLoading}
-              >
-                {isLoading ? <CircularProgress size={24} /> : 'Save Changes'}
-              </Button>
-            </Box>
-          )}
         </Box>
 
-        <Grid container spacing={3}>
-          <Grid item xs={12} display="flex" justifyContent="center">
-            <Avatar
-              sx={{ width: 100, height: 100, mb: 2 }}
-            >
-              {user?.first_name?.[0]}{user?.last_name?.[0]}
-            </Avatar>
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="First Name"
-              {...register('first_name')}
-              error={!!errors.first_name}
-              helperText={errors.first_name?.message}
-              disabled={!isEditing}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Last Name"
-              {...register('last_name')}
-              error={!!errors.last_name}
-              helperText={errors.last_name?.message}
-              disabled={!isEditing}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Email"
-              {...register('email')}
-              error={!!errors.email}
-              helperText={errors.email?.message}
-              disabled={!isEditing}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Company"
-              {...register('broker_company')}
-              error={!!errors.broker_company}
-              helperText={errors.broker_company?.message}
-              disabled={!isEditing}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="TR Name"
-              {...register('tr_name')}
-              error={!!errors.tr_name}
-              helperText={errors.tr_name?.message}
-              disabled={!isEditing}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="TR License Number"
-              {...register('tr_license_number')}
-              error={!!errors.tr_license_number}
-              helperText={errors.tr_license_number?.message}
-              disabled={!isEditing}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="TR Phone Number"
-              {...register('tr_phone_number')}
-              error={!!errors.tr_phone_number}
-              helperText={errors.tr_phone_number?.message}
-              disabled={!isEditing}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <Typography variant="subtitle1" color="textSecondary">
-              Role: {user?.role}
-            </Typography>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{
+            display: 'grid',
+            gap: 3,
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+          }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <TextField
+            label="First Name"
+            name="first_name"
+            value={formData.first_name}
+            onChange={handleChange}
+            fullWidth
+          />
+          <TextField
+            label="Last Name"
+            name="last_name"
+            value={formData.last_name}
+            onChange={handleChange}
+            fullWidth
+          />
+          <TextField
+            label="Email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            fullWidth
+            disabled
+          />
+          <TextField
+            label="Company"
+            name="broker_company"
+            value={formData.broker_company}
+            onChange={handleChange}
+            fullWidth
+          />
+          <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}>
+            <TextField
+              label="Role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              fullWidth
+              disabled
+            />
+          </Box>
+          <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1' }, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : 'Save Changes'}
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
     </Box>
-  );
-}
-
-export default function ProfilePage() {
-  return (
-    <Suspense fallback={
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    }>
-      <ProfileContent />
-    </Suspense>
   );
 } 
