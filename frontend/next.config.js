@@ -8,7 +8,7 @@ const nextConfig = {
     ignoreBuildErrors: false, // Keep TypeScript checks
   },
   experimental: {
-    // appDir is no longer needed in Next.js 15
+    // appDir is no longer needed in Next.js 14
   },
   // Configure webpack if needed
   webpack: (config, { isServer }) => {
@@ -24,7 +24,6 @@ const nextConfig = {
   images: {
     domains: []
   },
-  transpilePackages: ['react-pdf'],
   // Exclude test files from the build
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'].filter(ext => !ext.includes('test')),
 };

@@ -7,18 +7,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
 function TemplatesContent() {
-  const { user, isAdmin, isAuthenticated } = useAuth();
+  const { user, isAdmin, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+        return;
+      }
+      if (!isAdmin) {
+        router.push('/dashboard');
+      }
     }
-    if (!isAdmin) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, isAdmin, router]);
+  }, [isAuthenticated, isAdmin, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!isAuthenticated || !isAdmin) {
     return null;

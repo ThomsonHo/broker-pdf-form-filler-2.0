@@ -29,14 +29,39 @@ export interface UpdateTemplateData {
   is_active?: boolean;
 }
 
-class TemplateService {
+export interface FieldMapping {
+  id: string;
+  template_id: string;
+  pdf_field_name: string;
+  system_field_name: string;
+  field_type: string;
+  transformation_rule?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateFieldMappingData {
+  pdf_field_name: string;
+  system_field_name: string;
+  field_type: string;
+  transformation_rule?: string;
+}
+
+export interface UpdateFieldMappingData {
+  pdf_field_name?: string;
+  system_field_name?: string;
+  field_type?: string;
+  transformation_rule?: string;
+}
+
+export class TemplateService {
   async getTemplates(): Promise<Template[]> {
-    const response = await api.get('/templates/');
+    const response = await api.get('/forms/templates/');
     return response.data;
   }
 
   async getTemplate(id: string): Promise<Template> {
-    const response = await api.get(`/templates/${id}/`);
+    const response = await api.get(`/forms/templates/${id}/`);
     return response.data;
   }
 
@@ -48,7 +73,7 @@ class TemplateService {
     formData.append('version', data.version);
     formData.append('file', data.file);
 
-    const response = await api.post('/templates/', formData, {
+    const response = await api.post('/forms/templates/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -67,7 +92,7 @@ class TemplateService {
       formData.append('is_active', data.is_active.toString());
     }
 
-    const response = await api.patch(`/templates/${id}/`, formData, {
+    const response = await api.patch(`/forms/templates/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -76,16 +101,16 @@ class TemplateService {
   }
 
   async deleteTemplate(id: string): Promise<void> {
-    await api.delete(`/templates/${id}/`);
+    await api.delete(`/forms/templates/${id}/`);
   }
 
-  async getTemplatePreview(id: string): Promise<string> {
-    const response = await api.get(`/templates/${id}/preview/`);
-    return response.data.preview_url;
+  async getTemplatePreview(templateId: string): Promise<string> {
+    const response = await api.get(`/forms/templates/${templateId}/preview`);
+    return response.data.previewUrl;
   }
 
   async downloadTemplate(id: string): Promise<void> {
-    const response = await api.get(`/templates/${id}/download/`, {
+    const response = await api.get(`/forms/templates/${id}/download`, {
       responseType: 'blob',
     });
     
@@ -98,6 +123,36 @@ class TemplateService {
     link.remove();
     window.URL.revokeObjectURL(url);
   }
+
+  // Field Mapping Methods
+  async getFieldMappings(templateId: string): Promise<FieldMapping[]> {
+    const response = await api.get(`/forms/templates/${templateId}/field-mappings`);
+    return response.data;
+  }
+
+  async getFieldMapping(templateId: string, mappingId: string): Promise<FieldMapping> {
+    const response = await api.get(`/forms/templates/${templateId}/field-mappings/${mappingId}`);
+    return response.data;
+  }
+
+  async createFieldMapping(templateId: string, data: CreateFieldMappingData): Promise<FieldMapping> {
+    const response = await api.post(`/forms/templates/${templateId}/field-mappings`, data);
+    return response.data;
+  }
+
+  async updateFieldMapping(templateId: string, mappingId: string, data: UpdateFieldMappingData): Promise<FieldMapping> {
+    const response = await api.patch(`/forms/templates/${templateId}/field-mappings/${mappingId}`, data);
+    return response.data;
+  }
+
+  async deleteFieldMapping(templateId: string, mappingId: string): Promise<void> {
+    await api.delete(`/forms/templates/${templateId}/field-mappings/${mappingId}`);
+  }
+
+  async validateFieldMappings(templateId: string): Promise<{ valid: boolean; errors: string[] }> {
+    const response = await api.post(`/forms/templates/${templateId}/validate-mappings`);
+    return response.data;
+  }
 }
 
-export const templateService = new TemplateService(); 
+export const templateService = new TemplateService();

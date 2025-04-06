@@ -27,6 +27,8 @@ import {
   Alert,
   CircularProgress,
   Grid,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -34,11 +36,16 @@ import {
   Delete as DeleteIcon,
   Visibility as ViewIcon,
   Download as DownloadIcon,
+  Settings as SettingsIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
-import { templateService } from '@/services/templateService';
+import { templateService, FieldMapping } from '@/services/templateService';
+import { FieldMapping as FieldMappingComponent } from '@/components/templates/FieldMapping';
 import * as yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { PDFPreview } from '../templates/PDFPreview';
+import { FieldValidation } from '../templates/FieldValidation';
 
 const templateSchema = yup.object().shape({
   name: yup.string().required('Template name is required'),
@@ -54,6 +61,32 @@ interface TemplateManagementProps {
   onRefresh?: () => void;
 }
 
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`template-tabpanel-${index}`}
+      aria-labelledby={`template-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
 export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefresh }) => {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +95,7 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -71,6 +105,8 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
     message: '',
     severity: 'info',
   });
+  const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const {
     register,
@@ -221,6 +257,45 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  const handlePreviewClick = async (template: any) => {
+    try {
+      setSelectedTemplate(template);
+      const mappings = await templateService.getFieldMappings(template.id);
+      setFieldMappings(mappings);
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error('Error loading field mappings:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error loading field mappings',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleSaveTestData = async (data: any) => {
+    try {
+      // Here you would typically save the test data to your backend
+      console.log('Test data:', data);
+      setSnackbar({
+        open: true,
+        message: 'Test data saved successfully',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Error saving test data:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error saving test data',
+        severity: 'error',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" p={3}>
@@ -250,7 +325,7 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
               <TableCell>Category</TableCell>
               <TableCell>Version</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -264,28 +339,37 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
                   <TableCell>
                     {template.is_active ? 'Active' : 'Inactive'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell align="right">
                     <IconButton
-                      onClick={() => handlePreviewTemplate(template.id)}
-                      size="small"
+                      onClick={() => handlePreviewClick(template)}
+                      title="Preview"
                     >
                       <ViewIcon />
                     </IconButton>
                     <IconButton
                       onClick={() => handleDownloadTemplate(template.id)}
-                      size="small"
+                      title="Download"
                     >
                       <DownloadIcon />
                     </IconButton>
                     <IconButton
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        setTabValue(1);
+                      }}
+                      title="Field Mappings"
+                    >
+                      <SettingsIcon />
+                    </IconButton>
+                    <IconButton
                       onClick={() => handleOpenDialog(template)}
-                      size="small"
+                      title="Edit"
                     >
                       <EditIcon />
                     </IconButton>
                     <IconButton
                       onClick={() => handleDeleteTemplate(template.id)}
-                      size="small"
+                      title="Delete"
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -307,62 +391,71 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {selectedTemplate ? 'Edit Template' : 'Add New Template'}
+          {selectedTemplate ? 'Edit Template' : 'Add Template'}
         </DialogTitle>
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <DialogContent>
-            <Box display="flex" flexDirection="column" gap={2}>
-              <TextField
-                fullWidth
-                label="Template Name"
-                {...register('name')}
-                error={!!errors.name}
-                helperText={errors.name?.message}
-              />
-              <TextField
-                fullWidth
-                label="Description"
-                multiline
-                rows={4}
-                {...register('description')}
-                error={!!errors.description}
-                helperText={errors.description?.message}
-              />
-              <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  {...register('category')}
-                  error={!!errors.category}
-                  label="Category"
-                >
-                  <MenuItem value="insurance">Insurance</MenuItem>
-                  <MenuItem value="investment">Investment</MenuItem>
-                  <MenuItem value="retirement">Retirement</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                fullWidth
-                label="Version"
-                {...register('version')}
-                error={!!errors.version}
-                helperText={errors.version?.message}
-              />
-              <input
-                type="file"
-                id="template-file"
-                accept=".pdf"
-                style={{ display: 'none' }}
-              />
-              <Button
-                variant="outlined"
-                component="label"
-                htmlFor="template-file"
-                fullWidth
-              >
-                Upload PDF Template
-              </Button>
-            </Box>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Name"
+                  {...register('name')}
+                  error={!!errors.name}
+                  helperText={errors.name?.message}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  multiline
+                  rows={3}
+                  {...register('description')}
+                  error={!!errors.description}
+                  helperText={errors.description?.message}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth error={!!errors.category}>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    label="Category"
+                    {...register('category')}
+                  >
+                    <MenuItem value="broker">Broker</MenuItem>
+                    <MenuItem value="boclife">BOC Life</MenuItem>
+                    <MenuItem value="chubb">Chubb</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Version"
+                  {...register('version')}
+                  error={!!errors.version}
+                  helperText={errors.version?.message}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <input
+                  type="file"
+                  id="template-file"
+                  accept=".pdf"
+                  style={{ display: 'none' }}
+                />
+                <label htmlFor="template-file">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    fullWidth
+                  >
+                    Upload PDF Template
+                  </Button>
+                </label>
+              </Grid>
+            </Grid>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Cancel</Button>
@@ -373,25 +466,81 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
         </form>
       </Dialog>
 
+      {selectedTemplate && (
+        <Box sx={{ mt: 4 }}>
+          <Paper>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              aria-label="template tabs"
+            >
+              <Tab label="Details" />
+              <Tab label="Field Mappings" />
+              <Tab label="Testing" />
+            </Tabs>
+            <TabPanel value={tabValue} index={0}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="h6">Template Details</Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography><strong>Name:</strong> {selectedTemplate.name}</Typography>
+                  <Typography><strong>Category:</strong> {selectedTemplate.category}</Typography>
+                  <Typography><strong>Version:</strong> {selectedTemplate.version}</Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography><strong>Status:</strong> {selectedTemplate.is_active ? 'Active' : 'Inactive'}</Typography>
+                  <Typography><strong>Created:</strong> {new Date(selectedTemplate.created_at).toLocaleDateString()}</Typography>
+                  <Typography><strong>Last Updated:</strong> {new Date(selectedTemplate.updated_at).toLocaleDateString()}</Typography>
+                </Grid>
+              </Grid>
+            </TabPanel>
+            <TabPanel value={tabValue} index={1}>
+              <FieldMappingComponent
+                templateId={selectedTemplate.id}
+                onMappingUpdate={() => {
+                  setSnackbar({
+                    open: true,
+                    message: 'Field mappings updated successfully',
+                    severity: 'success',
+                  });
+                }}
+              />
+            </TabPanel>
+            <TabPanel value={tabValue} index={2}>
+              <FieldValidation
+                templateId={selectedTemplate.id}
+                fieldMappings={fieldMappings}
+                onSaveTestData={handleSaveTestData}
+              />
+            </TabPanel>
+          </Paper>
+        </Box>
+      )}
+
       <Dialog
-        open={!!previewUrl}
-        onClose={() => setPreviewUrl(null)}
-        maxWidth="lg"
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        maxWidth="xl"
         fullWidth
       >
-        <DialogTitle>Template Preview</DialogTitle>
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Template Preview</Typography>
+            <IconButton onClick={() => setPreviewOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          {previewUrl && (
-            <iframe
-              src={previewUrl}
-              style={{ width: '100%', height: '500px' }}
-              title="Template Preview"
+          {selectedTemplate && (
+            <PDFPreview
+              templateId={selectedTemplate.id}
+              fieldMappings={fieldMappings}
+              onSaveTestData={handleSaveTestData}
             />
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPreviewUrl(null)}>Close</Button>
-        </DialogActions>
       </Dialog>
 
       <Snackbar
