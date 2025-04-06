@@ -107,7 +107,7 @@ const Navbar = ({ onDrawerToggle }: NavbarProps) => {
             </Tooltip>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt={user?.email} src="/static/images/avatar/2.jpg" />
+                <Avatar alt={user?.email} />
               </IconButton>
             </Tooltip>
           </Box>
