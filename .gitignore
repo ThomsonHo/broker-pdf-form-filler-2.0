@@ -64,3 +64,4 @@ htmlcov/
 coverage/
 .pytest_cache/
 /requirement/references/
+/references/
