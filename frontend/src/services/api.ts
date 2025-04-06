@@ -37,7 +37,8 @@ api.interceptors.request.use((config) => {
   if (config.url) {
     config.url = config.url.replace(/^\/+/g, '');
     
-    if (!config.url.includes('?') && !config.url.endsWith('/')) {
+    // Don't add trailing slash to action URLs (like check-deletable)
+    if (!config.url.includes('?') && !config.url.endsWith('/') && !config.url.includes('/check-deletable')) {
       config.url = `${config.url}/`;
     }
     

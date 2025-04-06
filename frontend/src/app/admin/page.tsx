@@ -2,7 +2,6 @@
 
 import React, { Suspense, useEffect } from 'react';
 import { Box, Typography, Paper, Button, CircularProgress } from '@mui/material';
-import { Grid } from '@mui/system';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -33,7 +32,12 @@ function AdminContent() {
         Welcome, {user?.email}
       </Typography>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3, mt: 2 }}>
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, 
+        gap: 3, 
+        mt: 2 
+      }}>
         <Paper sx={{ p: 3, height: '100%' }}>
           <Typography variant="h6" gutterBottom>
             User Management
@@ -52,6 +56,22 @@ function AdminContent() {
         
         <Paper sx={{ p: 3, height: '100%' }}>
           <Typography variant="h6" gutterBottom>
+            Broker Company Management
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Manage broker companies and their settings.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => router.push('/admin/broker-companies')}
+          >
+            Manage Companies
+          </Button>
+        </Paper>
+
+        <Paper sx={{ p: 3, height: '100%' }}>
+          <Typography variant="h6" gutterBottom>
             PDF Template Management
           </Typography>
           <Typography variant="body1" paragraph>
@@ -65,16 +85,52 @@ function AdminContent() {
             Manage Templates
           </Button>
         </Paper>
-        
+
         <Paper sx={{ p: 3, height: '100%' }}>
           <Typography variant="h6" gutterBottom>
-            System Settings
+            Form Set Management
           </Typography>
           <Typography variant="body1" paragraph>
-            Configure system-wide settings and preferences.
+            Organize and manage form sets and their templates.
           </Typography>
-          <Button variant="contained" color="primary">
-            Settings
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => router.push('/admin/form-sets')}
+          >
+            Manage Form Sets
+          </Button>
+        </Paper>
+
+        <Paper sx={{ p: 3, height: '100%' }}>
+          <Typography variant="h6" gutterBottom>
+            Standardized Fields
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Manage standardized fields and their definitions.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => router.push('/admin/standardized-fields')}
+          >
+            Manage Fields
+          </Button>
+        </Paper>
+
+        <Paper sx={{ p: 3, height: '100%' }}>
+          <Typography variant="h6" gutterBottom>
+            Field Mapping
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Map PDF form fields to standardized fields.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => router.push('/admin/field-mapping')}
+          >
+            Manage Mappings
           </Button>
         </Paper>
       </Box>

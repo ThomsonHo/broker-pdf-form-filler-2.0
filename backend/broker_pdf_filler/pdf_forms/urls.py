@@ -4,8 +4,11 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'templates', views.FormTemplateViewSet)
-router.register(r'batches', views.FormGenerationBatchViewSet, basename='batch')
-router.register(r'forms', views.GeneratedFormViewSet, basename='form')
+router.register(r'form-sets', views.FormSetViewSet)
+router.register(r'standardized-fields', views.StandardizedFieldViewSet)
+router.register(r'field-mappings', views.FormFieldMappingViewSet)
+router.register(r'generated-forms', views.GeneratedFormViewSet)
+router.register(r'generation-batches', views.FormGenerationBatchViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

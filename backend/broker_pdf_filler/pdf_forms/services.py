@@ -9,6 +9,9 @@ from django.conf import settings
 from django.core.files import File
 from django.utils import timezone
 from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGenerationBatch
+import PyPDF2
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 
 # Load standardized fields
 STANDARDIZED_FIELDS_PATH = os.path.join(settings.BASE_DIR, 'requirement', 'references', 'standardized_fields.json')
@@ -217,4 +220,65 @@ class FormGenerationService:
             'daily_quota': settings.PDF_FORM_DAILY_QUOTA,
             'daily_used': today_forms,
             'daily_remaining': settings.PDF_FORM_DAILY_QUOTA - today_forms
-        } 
+        }
+
+def extract_pdf_fields(pdf_path):
+    """
+    Extract fillable fields from a PDF form.
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        
+    Returns:
+        list: List of field names found in the PDF
+    """
+    try:
+        with open(pdf_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            fields = []
+            
+            for page in reader.pages:
+                if '/AcroForm' in page:
+                    acroform = page['/AcroForm']
+                    if '/Fields' in acroform:
+                        for field in acroform['/Fields']:
+                            if '/T' in field:
+                                fields.append(field['/T'])
+            
+            return list(set(fields))  # Remove duplicates
+    except Exception as e:
+        raise ValidationError(_('Error extracting fields from PDF: {}').format(str(e)))
+
+def validate_field_mapping(mapping):
+    """
+    Validate a field mapping.
+    
+    Args:
+        mapping (dict): Field mapping data
+        
+    Raises:
+        ValidationError: If the mapping is invalid
+    """
+    required_fields = ['pdf_field_name']
+    for field in required_fields:
+        if field not in mapping:
+            raise ValidationError(_('Missing required field: {}').format(field))
+    
+    if 'standardized_field_id' in mapping and mapping['standardized_field_id']:
+        try:
+            from .models import StandardizedField
+            StandardizedField.objects.get(id=mapping['standardized_field_id'])
+        except StandardizedField.DoesNotExist:
+            raise ValidationError(_('Invalid standardized field ID'))
+    
+    if 'validation_rules' in mapping and mapping['validation_rules']:
+        try:
+            json.loads(mapping['validation_rules'])
+        except json.JSONDecodeError:
+            raise ValidationError(_('Invalid validation rules JSON'))
+    
+    if 'transformation_rules' in mapping and mapping['transformation_rules']:
+        try:
+            json.loads(mapping['transformation_rules'])
+        except json.JSONDecodeError:
+            raise ValidationError(_('Invalid transformation rules JSON')) 

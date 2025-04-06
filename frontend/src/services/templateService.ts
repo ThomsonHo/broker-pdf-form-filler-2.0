@@ -6,8 +6,10 @@ export interface Template {
   description: string;
   category: string;
   version: string;
-  file_url: string;
   is_active: boolean;
+  file_name?: string;
+  form_type?: string;
+  form_affiliation?: string;
   created_at: string;
   updated_at: string;
 }
@@ -17,7 +19,10 @@ export interface CreateTemplateData {
   description: string;
   category: string;
   version: string;
-  file: File;
+  template_file: File;
+  form_type?: string;
+  form_affiliation?: string;
+  is_active?: boolean;
 }
 
 export interface UpdateTemplateData {
@@ -27,6 +32,8 @@ export interface UpdateTemplateData {
   version?: string;
   file?: File;
   is_active?: boolean;
+  form_type?: string;
+  form_affiliation?: string;
 }
 
 export interface FieldMapping {
@@ -55,8 +62,11 @@ export interface UpdateFieldMappingData {
 }
 
 export class TemplateService {
-  async getTemplates(): Promise<Template[]> {
+  async getTemplates(): Promise<{ count: number; next: string | null; previous: string | null; results: Template[] }> {
+    console.log('TemplateService.getTemplates called');
     const response = await api.get('/forms/templates/');
+    console.log('API response:', response);
+    console.log('API response data:', response.data);
     return response.data;
   }
 
@@ -65,14 +75,30 @@ export class TemplateService {
     return response.data;
   }
 
-  async createTemplate(data: CreateTemplateData): Promise<Template> {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    formData.append('description', data.description);
-    formData.append('category', data.category);
-    formData.append('version', data.version);
-    formData.append('file', data.file);
-
+  async createTemplate(data: CreateTemplateData | FormData): Promise<Template> {
+    let formData: FormData;
+    
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('description', data.description);
+      formData.append('category', data.category);
+      formData.append('version', data.version);
+      formData.append('form_type', data.form_type || 'application');
+      formData.append('form_affiliation', data.form_affiliation || 'broker');
+      formData.append('is_active', data.is_active?.toString() || 'true');
+      formData.append('template_file', data.template_file);
+      formData.append('file_name', data.template_file.name);
+    }
+    
+    // Debug: Log FormData contents
+    console.log('FormData being sent to server:');
+    for (const pair of formData.entries()) {
+      console.log(pair[0] + ': ' + pair[1]);
+    }
+    
     const response = await api.post('/forms/templates/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -81,15 +107,23 @@ export class TemplateService {
     return response.data;
   }
 
-  async updateTemplate(id: string, data: UpdateTemplateData): Promise<Template> {
-    const formData = new FormData();
-    if (data.name) formData.append('name', data.name);
-    if (data.description) formData.append('description', data.description);
-    if (data.category) formData.append('category', data.category);
-    if (data.version) formData.append('version', data.version);
-    if (data.file) formData.append('file', data.file);
-    if (typeof data.is_active === 'boolean') {
-      formData.append('is_active', data.is_active.toString());
+  async updateTemplate(id: string, data: UpdateTemplateData | FormData): Promise<Template> {
+    let formData: FormData;
+    
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      if (data.name) formData.append('name', data.name);
+      if (data.description) formData.append('description', data.description);
+      if (data.category) formData.append('category', data.category);
+      if (data.version) formData.append('version', data.version);
+      if (data.file) formData.append('file', data.file);
+      if (typeof data.is_active === 'boolean') {
+        formData.append('is_active', data.is_active.toString());
+      }
+      if (data.form_type) formData.append('form_type', data.form_type);
+      if (data.form_affiliation) formData.append('form_affiliation', data.form_affiliation);
     }
 
     const response = await api.patch(`/forms/templates/${id}/`, formData, {
@@ -105,8 +139,11 @@ export class TemplateService {
   }
 
   async getTemplatePreview(templateId: string): Promise<string> {
-    const response = await api.get(`/forms/templates/${templateId}/preview`);
-    return response.data.previewUrl;
+    const response = await api.get(`/forms/templates/${templateId}/preview`, {
+      responseType: 'blob'
+    });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    return URL.createObjectURL(blob);
   }
 
   async downloadTemplate(id: string): Promise<void> {
@@ -151,6 +188,23 @@ export class TemplateService {
 
   async validateFieldMappings(templateId: string): Promise<{ valid: boolean; errors: string[] }> {
     const response = await api.post(`/forms/templates/${templateId}/validate-mappings`);
+    return response.data;
+  }
+
+  async checkTemplateDeletable(templateId: string): Promise<{ deletable: boolean }> {
+    const response = await api.get(`/forms/templates/${templateId}/check-deletable`);
+    return response.data;
+  }
+
+  async getTemplatesWithPagination(page: number, pageSize: number): Promise<{ count: number; next: string | null; previous: string | null; results: Template[] }> {
+    console.log(`TemplateService.getTemplatesWithPagination called with page=${page}, pageSize=${pageSize}`);
+    const response = await api.get('/forms/templates/', {
+      params: {
+        page: page + 1, // Django uses 1-based indexing
+        page_size: pageSize
+      }
+    });
+    console.log('API response with pagination:', response);
     return response.data;
   }
 }

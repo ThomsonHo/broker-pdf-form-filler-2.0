@@ -5,6 +5,10 @@ import uuid
 import os
 from datetime import timedelta
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+User = get_user_model()
 
 class FormTemplate(models.Model):
     """Model to store PDF form templates and their field mappings."""
@@ -15,15 +19,32 @@ class FormTemplate(models.Model):
         ('chubb', _('Chubb')),
     ]
     
+    FORM_TYPE_CHOICES = [
+        ('fna', _('Financial Needs Analysis')),
+        ('application', _('Application Form')),
+        ('agreement', _('Agreement')),
+        ('payment', _('Payment Form')),
+    ]
+    
+    FORM_AFFILIATION_CHOICES = [
+        ('broker', _('Broker')),
+        ('insurance', _('Insurance Company')),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     file_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    form_type = models.CharField(max_length=20, choices=FORM_TYPE_CHOICES, default='application')
+    form_affiliation = models.CharField(max_length=20, choices=FORM_AFFILIATION_CHOICES, default='broker')
+    version = models.CharField(max_length=20, default='1.0')
     template_file = models.FileField(upload_to='templates/pdf_forms/')
     is_active = models.BooleanField(default=True)
+    metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     
     class Meta:
         verbose_name = _('form template')
@@ -34,6 +55,71 @@ class FormTemplate(models.Model):
         return f"{self.name} ({self.get_category_display()})"
 
 
+class FormSet(models.Model):
+    """Model to group PDF forms into sets."""
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    forms = models.ManyToManyField(FormTemplate, related_name='form_sets')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_form_sets')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('form set')
+        verbose_name_plural = _('form sets')
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class StandardizedField(models.Model):
+    """Model to store standardized fields for mapping."""
+    
+    FIELD_TYPE_CHOICES = [
+        ('text', _('Text')),
+        ('number', _('Number')),
+        ('date', _('Date')),
+        ('email', _('Email')),
+        ('phone', _('Phone')),
+        ('address', _('Address')),
+        ('select', _('Select')),
+        ('multiselect', _('Multi-select')),
+        ('checkbox', _('Checkbox')),
+        ('radio', _('Radio')),
+    ]
+    
+    FIELD_CATEGORY_CHOICES = [
+        ('client', _('Client Standardized Field')),
+        ('broker', _('Broker-Specific Field')),
+        ('user', _('User-Specific Field')),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default='text')
+    field_category = models.CharField(max_length=20, choices=FIELD_CATEGORY_CHOICES, default='client')
+    validation_rules = models.TextField(blank=True)
+    is_required = models.BooleanField(default=False)
+    field_definition = models.TextField(blank=True)
+    llm_guide = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_standardized_fields')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('standardized field')
+        verbose_name_plural = _('standardized fields')
+        ordering = ['field_category', 'name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_field_category_display()})"
+
+
 class FormFieldMapping(models.Model):
     """Model to store the mapping between PDF form fields and system fields."""
     
@@ -41,8 +127,13 @@ class FormFieldMapping(models.Model):
     template = models.ForeignKey(FormTemplate, on_delete=models.CASCADE, related_name='field_mappings')
     pdf_field_name = models.CharField(max_length=100)
     system_field_name = models.CharField(max_length=100, null=True, blank=True)
+    standardized_field = models.ForeignKey(StandardizedField, on_delete=models.SET_NULL, null=True, blank=True, related_name='form_mappings')
+    validation_rules = models.TextField(blank=True)
+    transformation_rules = models.TextField(blank=True)
+    field_definition_override = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     
     class Meta:
         verbose_name = _('form field mapping')
@@ -63,7 +154,7 @@ class GeneratedForm(models.Model):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='generated_forms')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='generated_forms')
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='forms')
     template = models.ForeignKey(FormTemplate, on_delete=models.SET_NULL, null=True, related_name='generated_forms')
     batch = models.ForeignKey('FormGenerationBatch', on_delete=models.CASCADE, related_name='batch_forms', null=True)
@@ -105,7 +196,7 @@ class FormGenerationBatch(models.Model):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='form_batches')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='form_batches')
     client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, related_name='form_batches')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')
     zip_file = models.FileField(upload_to='pdf_forms/batches/', null=True, blank=True)
