@@ -80,10 +80,13 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def register(self, request):
         """Register a new user."""
+        print("Received registration data:", request.data)
         serializer = UserRegistrationSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             try:
+                print("Validated data:", serializer.validated_data)
                 user = serializer.save()
+                print("Created user:", user.id)
                 
                 # Generate and send email verification token
                 token = user.generate_email_verification_token()
@@ -94,21 +97,30 @@ class UserViewSet(viewsets.ModelViewSet):
                     user=user,
                     action='user_created',
                     ip_address=self._get_client_ip(request),
-                    details={'created_by': request.user.id if request.user.is_authenticated else None}
+                    details={'created_by': str(request.user.id) if request.user.is_authenticated else None}
                 )
                 
                 # Create initial quota usage record
                 UserQuotaUsage.objects.create(user=user)
                 
+                # Use UserSerializer for the response to ensure proper serialization
+                response_serializer = UserSerializer(user)
+                response_data = response_serializer.data
+                print("Response data:", response_data)
                 return Response(
-                    UserSerializer(user).data,
+                    response_data,
                     status=status.HTTP_201_CREATED
                 )
             except Exception as e:
+                print("Error during user creation:", str(e))
+                print("Error type:", type(e))
+                import traceback
+                print("Traceback:", traceback.format_exc())
                 return Response(
                     {'error': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['post'])

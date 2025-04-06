@@ -118,10 +118,14 @@ class UserService {
         };
         
         console.log('Registration data:', registrationData);
+        console.log('Broker company type:', typeof data.broker_company);
+        console.log('Broker company value:', data.broker_company);
+        
         const response = await api.post('/users/register/', registrationData);
         return response.data;
       } catch (error: any) {
         console.error('Registration error:', error.response?.data || error.message);
+        console.error('Full error object:', error);
         throw error;
       }
     }
