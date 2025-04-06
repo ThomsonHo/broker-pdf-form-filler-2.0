@@ -58,7 +58,6 @@ const FIELD_TYPES = [
   'range',
   'tel',
   'search',
-  'time',
   'week',
   'month',
   'datetime-local',

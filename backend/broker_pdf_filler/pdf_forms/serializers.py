@@ -3,12 +3,16 @@ from django.utils.translation import gettext_lazy as _
 from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGenerationBatch, FormSet, StandardizedField
 
 class StandardizedFieldSerializer(serializers.ModelSerializer):
+    validation = serializers.JSONField(required=False, allow_null=True)
+    relationships = serializers.JSONField(required=False, allow_null=True)
+    
     class Meta:
         model = StandardizedField
         fields = [
-            'id', 'name', 'description', 'field_type', 'field_category',
-            'validation_rules', 'is_required', 'field_definition', 'llm_guide',
-            'metadata', 'created_by', 'created_at', 'updated_at'
+            'id', 'name', 'label', 'type', 'required', 'validation', 'relationships',
+            'description', 'field_type', 'field_category', 'validation_rules', 
+            'is_required', 'field_definition', 'llm_guide', 'metadata', 
+            'created_by', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
@@ -20,6 +24,16 @@ class StandardizedFieldSerializer(serializers.ModelSerializer):
     def validate_metadata(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError("Metadata must be a dictionary")
+        return value
+        
+    def validate_validation(self, value):
+        if value is not None and not isinstance(value, dict):
+            raise serializers.ValidationError("Validation must be a dictionary")
+        return value
+        
+    def validate_relationships(self, value):
+        if value is not None and not isinstance(value, dict):
+            raise serializers.ValidationError("Relationships must be a dictionary")
         return value
 
 class FormFieldMappingSerializer(serializers.ModelSerializer):

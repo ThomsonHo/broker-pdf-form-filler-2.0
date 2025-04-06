@@ -99,6 +99,11 @@ class StandardizedField(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
+    label = models.CharField(max_length=100, blank=True)
+    type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default='text')
+    required = models.BooleanField(default=False)
+    validation = models.JSONField(default=dict, blank=True, null=True)
+    relationships = models.JSONField(default=dict, blank=True, null=True)
     description = models.TextField(blank=True)
     field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default='text')
     field_category = models.CharField(max_length=20, choices=FIELD_CATEGORY_CHOICES, default='client')
