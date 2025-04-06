@@ -49,8 +49,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const token = localStorage.getItem('access_token');
-        const userData = localStorage.getItem('user');
+        // Check cookies first
+        const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=');
+          acc[key] = value;
+          return acc;
+        }, {} as { [key: string]: string });
+
+        const token = cookies['access_token'] || localStorage.getItem('access_token');
+        const userData = cookies['user'] || localStorage.getItem('user');
 
         if (token && userData) {
           const parsedUser = JSON.parse(userData);
@@ -82,10 +89,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
+      
+      // Store tokens in cookies
+      document.cookie = `access_token=${data.access}; path=/`;
+      document.cookie = `refresh_token=${data.refresh}; path=/`;
+      document.cookie = `user=${JSON.stringify(data.user)}; path=/`;
+      
+      // Also store in localStorage for backward compatibility
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
       localStorage.setItem('user', JSON.stringify(data.user));
+      
       setUser(data.user);
+      
+      // Redirect to dashboard after successful login
+      router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -94,9 +112,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Clear cookies
+      document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      
+      // Clear localStorage
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
+      
       setUser(null);
       router.push('/login');
     } catch (error) {
