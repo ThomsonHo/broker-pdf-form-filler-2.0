@@ -1,12 +1,12 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Box, Container, Paper, Typography } from '@mui/material';
 import LoginForm from '@/components/auth/LoginForm';
 import { useAuth } from '@/contexts/AuthContext';
 
-function LoginContent() {
+export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
@@ -15,6 +15,7 @@ function LoginContent() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
+      console.log('User is authenticated, redirecting to:', from);
       router.push(from);
     }
   }, [isAuthenticated, router, from]);
@@ -52,13 +53,5 @@ function LoginContent() {
         </Paper>
       </Container>
     </Box>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LoginContent />
-    </Suspense>
   );
 } 

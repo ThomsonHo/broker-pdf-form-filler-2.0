@@ -49,12 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log('Initializing authentication state');
         const token = localStorage.getItem('access_token');
         const userData = localStorage.getItem('user');
 
         if (token && userData) {
+          console.log('Found token and user data in localStorage');
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
+        } else {
+          console.log('No token or user data found in localStorage');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -68,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('Attempting login with:', email);
       const response = await fetch('http://localhost:8000/api/auth/login/', {
         method: 'POST',
         headers: {
@@ -78,14 +83,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
+        console.error('Login failed with status:', response.status);
         throw new Error('Invalid credentials');
       }
 
       const data = await response.json();
+      console.log('Login successful, received data:', data);
+      
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
       localStorage.setItem('user', JSON.stringify(data.user));
+      
       setUser(data.user);
+      
+      return data;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -225,4 +236,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}    
