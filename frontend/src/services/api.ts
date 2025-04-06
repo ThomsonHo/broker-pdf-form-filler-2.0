@@ -91,8 +91,8 @@ export const fetchDashboardData = async () => {
   try {
     log('Fetching dashboard data');
     const [metricsResponse, quickLinksResponse] = await Promise.all([
-      api.get('/api/dashboard/metrics/'),
-      api.get('/api/dashboard/quick-links/'),
+      api.get('/dashboard/metrics/'),
+      api.get('/dashboard/quick-links/'),
     ]);
 
     log('Dashboard data received');
