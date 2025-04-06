@@ -51,6 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = Boolean(user?.role === 'admin' || user?.is_superuser);
 
   useEffect(() => {
+    // Only run this effect on the client side
+    if (typeof window === 'undefined') return;
+    
     const initAuth = async () => {
       try {
         // Check cookies first
