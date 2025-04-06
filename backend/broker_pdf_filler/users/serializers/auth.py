@@ -18,7 +18,7 @@ class EmailVerificationSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user data."""
     id = serializers.UUIDField(read_only=True)
-    broker_company = serializers.SerializerMethodField()
+    broker_company = serializers.CharField(required=False, allow_null=True)
     
     class Meta:
         model = User
@@ -30,11 +30,40 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'email_verified']
     
-    def get_broker_company(self, obj):
-        """Return the broker company's ia_reg_code instead of the object."""
-        if obj.broker_company:
-            return obj.broker_company.ia_reg_code
-        return None
+    def validate_broker_company(self, value):
+        if value:
+            try:
+                BrokerCompany.objects.get(ia_reg_code=value)
+            except BrokerCompany.DoesNotExist:
+                raise serializers.ValidationError("Invalid broker company code.")
+        return value
+    
+    def update(self, instance, validated_data):
+        # Handle broker_company separately
+        broker_company_code = validated_data.pop('broker_company', None)
+        if broker_company_code:
+            try:
+                broker_company = BrokerCompany.objects.get(ia_reg_code=broker_company_code)
+                instance.broker_company = broker_company
+            except BrokerCompany.DoesNotExist:
+                raise serializers.ValidationError({"broker_company": "Invalid broker company code."})
+        elif broker_company_code is None:  # Allow setting to None
+            instance.broker_company = None
+            
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+            
+        instance.save()
+        return instance
+    
+    def to_representation(self, instance):
+        """Customize the serialized representation of the user."""
+        data = super().to_representation(instance)
+        # Convert broker_company from object to string (ia_reg_code)
+        if instance.broker_company:
+            data['broker_company'] = instance.broker_company.ia_reg_code
+        return data
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
