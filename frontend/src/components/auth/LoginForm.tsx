@@ -40,9 +40,15 @@ export default function LoginForm() {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
+      console.log('Form submitted with:', data);
+      setError(null);
+      
       await login(data.email, data.password);
-      router.push('/dashboard');
+      console.log('Login successful, redirecting to dashboard');
+      
+      window.location.href = '/dashboard';
     } catch (err) {
+      console.error('Login error:', err);
       setError('Invalid email or password');
     }
   };
@@ -99,4 +105,4 @@ export default function LoginForm() {
       </Box>
     </Box>
   );
-} 
+}      
