@@ -29,6 +29,7 @@ export interface CreateUserData {
   tr_license_number?: string;
   tr_phone_number?: string;
   password?: string;
+  password2?: string;
 }
 
 export interface UpdateUserData {
@@ -233,4 +234,4 @@ class UserService {
   }
 }
 
-export const userService = new UserService(); 
+export const userService = new UserService();   

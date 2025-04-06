@@ -217,9 +217,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({ onRefresh }) => 
       if (onRefresh) onRefresh();
     } catch (error: any) {
       console.error('Error saving user:', error);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Error saving user',
+        message: error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || 'Error saving user',
         severity: 'error',
       });
     }
@@ -480,4 +482,4 @@ export const UserManagement: React.FC<UserManagementProps> = ({ onRefresh }) => 
       </Snackbar>
     </Box>
   );
-}; 
+};   
