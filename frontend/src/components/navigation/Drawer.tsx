@@ -25,10 +25,10 @@ interface NavigationDrawerProps {
 
 const drawerWidth = 240;
 
-export default function NavigationDrawer({ open, onClose }: NavigationDrawerProps) {
+const NavigationDrawer = ({ open, onClose }: NavigationDrawerProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
 
   const menuItems = [
     {
@@ -36,9 +36,24 @@ export default function NavigationDrawer({ open, onClose }: NavigationDrawerProp
       icon: <DashboardIcon />,
       path: '/dashboard',
     },
+    {
+      text: 'Client Management',
+      icon: <PeopleIcon />,
+      path: '/clients',
+    },
+    {
+      text: 'PDF Forms',
+      icon: <DescriptionIcon />,
+      path: '/forms',
+    },
   ];
 
   const adminMenuItems = [
+    {
+      text: 'Admin Panel',
+      icon: <PeopleIcon />,
+      path: '/admin',
+    },
     {
       text: 'Users',
       icon: <PeopleIcon />,
@@ -86,7 +101,7 @@ export default function NavigationDrawer({ open, onClose }: NavigationDrawerProp
           ))}
         </List>
 
-        {isAdmin && (
+        {user?.role === 'admin' && (
           <>
             <Divider />
             <Box sx={{ p: 2 }}>
@@ -112,4 +127,6 @@ export default function NavigationDrawer({ open, onClose }: NavigationDrawerProp
       </Box>
     </Drawer>
   );
-} 
+};
+
+export default NavigationDrawer; 

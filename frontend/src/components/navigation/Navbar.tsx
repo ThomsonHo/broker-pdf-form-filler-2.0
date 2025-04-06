@@ -17,26 +17,15 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import DescriptionIcon from '@mui/icons-material/Description';
 import InfoIcon from '@mui/icons-material/Info';
 
 interface NavbarProps {
   onDrawerToggle: () => void;
 }
 
-const pages = [
-  { title: 'Dashboard', path: '/dashboard' },
-  { title: 'Client Management', path: '/clients' },
-  { title: 'PDF Forms', path: '/forms' },
-];
-
-const adminPages = [
-  { title: 'Admin Panel', path: '/admin' },
-];
-
-export default function Navbar({ onDrawerToggle }: NavbarProps) {
+const Navbar = ({ onDrawerToggle }: NavbarProps) => {
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
-  const [userInfoAnchor, setUserInfoAnchor] = useState<null | HTMLElement>(null);
+  const [anchorElInfo, setAnchorElInfo] = useState<null | HTMLElement>(null);
   const router = useRouter();
   const { user, logout } = useAuth();
 
@@ -48,12 +37,12 @@ export default function Navbar({ onDrawerToggle }: NavbarProps) {
     setAnchorElUser(null);
   };
 
-  const handleUserInfoOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setUserInfoAnchor(event.currentTarget);
+  const handleOpenUserInfoPopup = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElInfo(event.currentTarget);
   };
 
-  const handleUserInfoClose = () => {
-    setUserInfoAnchor(null);
+  const handleCloseUserInfoPopup = () => {
+    setAnchorElInfo(null);
   };
 
   const handleLogout = async () => {
@@ -90,7 +79,6 @@ export default function Navbar({ onDrawerToggle }: NavbarProps) {
             <MenuIcon />
           </IconButton>
 
-          <DescriptionIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
           <Typography
             variant="h6"
             noWrap
@@ -106,34 +94,14 @@ export default function Navbar({ onDrawerToggle }: NavbarProps) {
               textDecoration: 'none',
             }}
           >
-            PDF FILLER
+            Broker CRM & PDF Form Filler
           </Typography>
 
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {pages.map((page) => (
-              <MenuItem
-                key={page.title}
-                onClick={() => router.push(page.path)}
-                sx={{ my: 2, color: 'white', display: 'block' }}
-              >
-                {page.title}
-              </MenuItem>
-            ))}
-            {user?.role === 'admin' &&
-              adminPages.map((page) => (
-                <MenuItem
-                  key={page.title}
-                  onClick={() => router.push(page.path)}
-                  sx={{ my: 2, color: 'white', display: 'block' }}
-                >
-                  {page.title}
-                </MenuItem>
-              ))}
-          </Box>
+          <Box sx={{ flexGrow: 1 }} />
 
-          <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Tooltip title="User Information">
-              <IconButton onClick={handleUserInfoOpen} sx={{ color: 'white' }}>
+              <IconButton onClick={handleOpenUserInfoPopup} sx={{ color: 'white' }}>
                 <InfoIcon />
               </IconButton>
             </Tooltip>
@@ -143,6 +111,39 @@ export default function Navbar({ onDrawerToggle }: NavbarProps) {
               </IconButton>
             </Tooltip>
           </Box>
+
+          <Menu
+            sx={{ mt: '45px' }}
+            id="menu-user-info"
+            anchorEl={anchorElInfo}
+            anchorOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            keepMounted
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            open={Boolean(anchorElInfo)}
+            onClose={handleCloseUserInfoPopup}
+          >
+            <Paper sx={{ p: 2, minWidth: 200 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                User Information
+              </Typography>
+              <Typography variant="body2">Email: {user?.email}</Typography>
+              <Typography variant="body2">Role: {user?.role}</Typography>
+              <Typography variant="body2">
+                Superuser: {user?.is_superuser ? 'Yes' : 'No'}
+              </Typography>
+              {user?.created_at && (
+                <Typography variant="body2">
+                  Created: {new Date(user.created_at).toLocaleDateString()}
+                </Typography>
+              )}
+            </Paper>
+          </Menu>
 
           <Menu
             sx={{ mt: '45px' }}
@@ -170,41 +171,10 @@ export default function Navbar({ onDrawerToggle }: NavbarProps) {
               <Typography textAlign="center">Logout</Typography>
             </MenuItem>
           </Menu>
-
-          <Menu
-            sx={{ mt: '45px' }}
-            id="user-info-menu"
-            anchorEl={userInfoAnchor}
-            anchorOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-            keepMounted
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-            open={Boolean(userInfoAnchor)}
-            onClose={handleUserInfoClose}
-          >
-            <Paper sx={{ p: 2, minWidth: 200 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                User Information
-              </Typography>
-              <Typography variant="body2">Email: {user?.email}</Typography>
-              <Typography variant="body2">Role: {user?.role}</Typography>
-              <Typography variant="body2">
-                Superuser: {user?.is_superuser ? 'Yes' : 'No'}
-              </Typography>
-              {user?.created_at && (
-                <Typography variant="body2">
-                  Created: {new Date(user.created_at).toLocaleDateString()}
-                </Typography>
-              )}
-            </Paper>
-          </Menu>
         </Toolbar>
       </Container>
     </AppBar>
   );
-} 
+};
+
+export default Navbar; 
