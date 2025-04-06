@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Toolbar } from '@mui/material';
 import Navbar from '@/components/navigation/Navbar';
 import NavigationDrawer from '@/components/navigation/Drawer';
@@ -11,6 +11,11 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
@@ -29,7 +34,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           mt: 8,
         }}
       >
-        {children}
+        {mounted ? children : null}
       </Box>
     </Box>
   );

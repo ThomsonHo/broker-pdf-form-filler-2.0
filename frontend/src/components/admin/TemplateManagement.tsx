@@ -120,7 +120,8 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
   const fetchTemplates = async () => {
     try {
       const response = await templateService.getTemplates();
-      setTemplates(response);
+      const templatesArray = Array.isArray(response) ? response : [];
+      setTemplates(templatesArray);
     } catch (error) {
       console.error('Error fetching templates:', error);
       setSnackbar({
@@ -128,6 +129,7 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
         message: 'Error fetching templates',
         severity: 'error',
       });
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
@@ -457,20 +459,32 @@ export const TemplateManagement: React.FC<TemplateManagementProps> = ({ onRefres
               </Tabs>
             </Box>
             <TabPanel value={tabValue} index={0}>
-              <FieldMappingComponent
-                templateId={selectedTemplate?.id}
-                fieldMappings={fieldMappings}
-                onSave={(mappings) => {
-                  setFieldMappings(mappings);
-                  handleCloseDialog();
-                }}
-              />
+              {selectedTemplate ? (
+                <FieldMappingComponent
+                  templateId={selectedTemplate.id}
+                  fieldMappings={fieldMappings}
+                  onSave={(mappings) => {
+                    setFieldMappings(mappings);
+                    handleCloseDialog();
+                  }}
+                />
+              ) : (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography>Please select a template to view field mappings</Typography>
+                </Box>
+              )}
             </TabPanel>
             <TabPanel value={tabValue} index={1}>
-              <FieldValidation
-                templateId={selectedTemplate?.id}
-                fieldMappings={fieldMappings}
-              />
+              {selectedTemplate ? (
+                <FieldValidation
+                  templateId={selectedTemplate.id}
+                  fieldMappings={fieldMappings}
+                />
+              ) : (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography>Please select a template to validate fields</Typography>
+                </Box>
+              )}
             </TabPanel>
             <TabPanel value={tabValue} index={2}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

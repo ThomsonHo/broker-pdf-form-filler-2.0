@@ -102,6 +102,11 @@ export const FieldMapping: React.FC<FieldMappingProps> = ({
   const fetchMappings = async () => {
     try {
       setLoading(true);
+      if (!templateId) {
+        console.warn('Template ID is undefined, skipping field mapping fetch');
+        setMappings([]);
+        return;
+      }
       const response = await templateService.getFieldMappings(templateId);
       setMappings(response);
     } catch (error) {

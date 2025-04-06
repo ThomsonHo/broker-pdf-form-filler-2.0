@@ -94,6 +94,15 @@ export const FieldValidation: FC<FieldValidationProps> = ({
   const handleValidateFields = async () => {
     setLoading(true);
     try {
+      if (!templateId) {
+        console.warn('Template ID is undefined, skipping field validation');
+        setSnackbar({
+          open: true,
+          message: 'Template ID is undefined, cannot validate fields',
+          severity: 'error',
+        });
+        return;
+      }
       const { valid, errors } = await templateService.validateFieldMappings(templateId);
 
       setValidationResults(
