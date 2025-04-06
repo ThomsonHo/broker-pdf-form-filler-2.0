@@ -29,16 +29,18 @@ import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, AutoFixHigh as 
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { standardizedFieldService, StandardizedField, CreateStandardizedFieldData, UpdateStandardizedFieldData } from '../../services/standardizedFieldService';
+import { standardizedFieldService, StandardizedField, CreateStandardizedFieldData, UpdateStandardizedFieldData, StandardizedFieldCategory } from '../../services/standardizedFieldService';
 
 const schema = yup.object().shape({
   name: yup.string().required('Name is required'),
   description: yup.string(),
   field_type: yup.string().required('Field type is required'),
+  field_category: yup.string().required('Field category is required'),
   validation_rules: yup.array().of(yup.string()),
   is_required: yup.boolean(),
   field_definition: yup.string().required('Field definition is required'),
   llm_guide: yup.string(),
+  category: yup.string(),
   metadata: yup.object(),
 });
 
@@ -55,8 +57,15 @@ const FIELD_TYPES = [
   'radio',
 ];
 
+const FIELD_CATEGORIES = [
+  'client',
+  'broker',
+  'user',
+];
+
 export const StandardizedFieldManagement: React.FC = () => {
   const [fields, setFields] = useState<StandardizedField[]>([]);
+  const [categories, setCategories] = useState<StandardizedFieldCategory[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedField, setSelectedField] = useState<StandardizedField | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +81,7 @@ export const StandardizedFieldManagement: React.FC = () => {
   
   useEffect(() => {
     fetchFields();
+    fetchCategories();
   }, []);
   
   const fetchFields = async () => {
@@ -82,11 +92,23 @@ export const StandardizedFieldManagement: React.FC = () => {
       setError('Failed to fetch standardized fields');
     }
   };
+
+  const fetchCategories = async () => {
+    try {
+      const data = await standardizedFieldService.getStandardizedFieldCategories();
+      setCategories(data);
+    } catch (err) {
+      setError('Failed to fetch standardized field categories');
+    }
+  };
   
   const handleOpenDialog = (field?: StandardizedField) => {
     if (field) {
       setSelectedField(field);
-      reset(field);
+      reset({
+        ...field,
+        category: field.category?.id || '',
+      });
     } else {
       setSelectedField(null);
       reset({
@@ -210,6 +232,7 @@ export const StandardizedFieldManagement: React.FC = () => {
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Type</TableCell>
+              <TableCell>Category</TableCell>
               <TableCell>Required</TableCell>
               <TableCell>Validation Rules</TableCell>
               <TableCell>Created At</TableCell>
@@ -222,6 +245,9 @@ export const StandardizedFieldManagement: React.FC = () => {
                 <TableCell>{field.name}</TableCell>
                 <TableCell>
                   <Chip label={field.field_type} size="small" />
+                </TableCell>
+                <TableCell>
+                  <Chip label={field.category?.name || 'Uncategorized'} size="small" color="secondary" />
                 </TableCell>
                 <TableCell>
                   <Chip
@@ -310,6 +336,50 @@ export const StandardizedFieldManagement: React.FC = () => {
                         {errors.field_type.message}
                       </Typography>
                     )}
+                  </FormControl>
+                )}
+              />
+
+              <Controller
+                name="field_category"
+                control={control}
+                defaultValue="client"
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.field_category}>
+                    <InputLabel>Field Category</InputLabel>
+                    <Select {...field} label="Field Category">
+                      {FIELD_CATEGORIES.map((category) => (
+                        <MenuItem key={category} value={category}>
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.field_category && (
+                      <Typography color="error" variant="caption">
+                        {errors.field_category.message}
+                      </Typography>
+                    )}
+                  </FormControl>
+                )}
+              />
+
+              <Controller
+                name="category"
+                control={control}
+                defaultValue=""
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Standardized Field Category</InputLabel>
+                    <Select {...field} label="Standardized Field Category">
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {categories.map((category) => (
+                        <MenuItem key={category.id} value={category.id}>
+                          {category.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
                   </FormControl>
                 )}
               />

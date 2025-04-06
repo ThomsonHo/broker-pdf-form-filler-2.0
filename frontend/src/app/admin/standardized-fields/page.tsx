@@ -132,9 +132,12 @@ export default function StandardizedFieldsPage() {
   const fetchFields = async () => {
     try {
       setLoading(true);
-      const response = await standardizedFieldService.getFields(page + 1, rowsPerPage);
-      setFields(response.results);
-      setTotalCount(response.count);
+      const fields = await standardizedFieldService.getStandardizedFields();
+      // Handle pagination on the client side
+      const startIndex = page * rowsPerPage;
+      const endIndex = startIndex + rowsPerPage;
+      setFields(fields.slice(startIndex, endIndex));
+      setTotalCount(fields.length);
     } catch (error) {
       console.error('Error fetching fields:', error);
       setSnackbar({
@@ -207,14 +210,30 @@ export default function StandardizedFieldsPage() {
       };
 
       if (selectedField) {
-        await standardizedFieldService.updateField(selectedField.id, cleanedData);
+        await standardizedFieldService.updateStandardizedField(selectedField.id, {
+          name: cleanedData.name,
+          field_type: cleanedData.type,
+          field_category: 'standard',
+          is_required: cleanedData.required,
+          field_definition: cleanedData.label,
+          validation_rules: cleanedData.validation ? [JSON.stringify(cleanedData.validation)] : [],
+          llm_guide: cleanedData.relationships ? JSON.stringify(cleanedData.relationships) : '',
+        });
         setSnackbar({
           open: true,
           message: 'Field updated successfully',
           severity: 'success',
         });
       } else {
-        await standardizedFieldService.createField(cleanedData);
+        await standardizedFieldService.createStandardizedField({
+          name: cleanedData.name,
+          field_type: cleanedData.type,
+          field_category: 'standard',
+          is_required: cleanedData.required,
+          field_definition: cleanedData.label,
+          validation_rules: cleanedData.validation ? [JSON.stringify(cleanedData.validation)] : [],
+          llm_guide: cleanedData.relationships ? JSON.stringify(cleanedData.relationships) : '',
+        });
         setSnackbar({
           open: true,
           message: 'Field created successfully',
@@ -236,7 +255,7 @@ export default function StandardizedFieldsPage() {
   const handleDeleteField = async (fieldId: string) => {
     if (window.confirm('Are you sure you want to delete this field?')) {
       try {
-        await standardizedFieldService.deleteField(fieldId);
+        await standardizedFieldService.deleteStandardizedField(fieldId);
         setSnackbar({
           open: true,
           message: 'Field deleted successfully',

@@ -8,11 +8,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils.translation import gettext_lazy as _
 from django.db.models import Q
-from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGenerationBatch, FormSet, StandardizedField
+from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGenerationBatch, FormSet, StandardizedField, StandardizedFieldCategory
 from .serializers import (
     FormTemplateSerializer, FormFieldMappingSerializer,
     GeneratedFormSerializer, FormGenerationBatchSerializer,
-    FormSetSerializer, StandardizedFieldSerializer
+    FormSetSerializer, StandardizedFieldSerializer, StandardizedFieldCategorySerializer
 )
 from .services import FormGenerationService, extract_pdf_fields, validate_field_mapping
 from .permissions import IsAdminUser, IsBrokerUser
@@ -276,3 +276,21 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         response = FileResponse(form.form_file, as_attachment=True)
         response['Content-Disposition'] = f'attachment; filename="{os.path.basename(form.form_file.name)}"'
         return response
+
+class StandardizedFieldCategoryViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing standardized field categories."""
+    queryset = StandardizedFieldCategory.objects.all()
+    serializer_class = StandardizedFieldCategorySerializer
+    permission_classes = [IsAdminUser]
+    filterset_fields = ['name']
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'created_at', 'updated_at']
+    
+    def get_queryset(self):
+        return StandardizedFieldCategory.objects.all()
+    
+    def perform_create(self, serializer):
+        serializer.save()
+    
+    def perform_update(self, serializer):
+        serializer.save()

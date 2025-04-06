@@ -120,6 +120,22 @@ function AdminContent() {
 
         <Paper sx={{ p: 3, height: '100%' }}>
           <Typography variant="h6" gutterBottom>
+            Standardized Field Categories
+          </Typography>
+          <Typography variant="body1" paragraph>
+            Manage categories for standardized fields.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => router.push('/admin/standardized-field-categories')}
+          >
+            Manage Categories
+          </Button>
+        </Paper>
+
+        <Paper sx={{ p: 3, height: '100%' }}>
+          <Typography variant="h6" gutterBottom>
             Field Mapping
           </Typography>
           <Typography variant="body1" paragraph>

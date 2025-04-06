@@ -75,6 +75,24 @@ class FormSet(models.Model):
         return self.name
 
 
+class StandardizedFieldCategory(models.Model):
+    """Model to store categories for standardized fields."""
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('standardized field category')
+        verbose_name_plural = _('standardized field categories')
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
 class StandardizedField(models.Model):
     """Model to store standardized fields for mapping."""
     
@@ -107,6 +125,7 @@ class StandardizedField(models.Model):
     description = models.TextField(blank=True)
     field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default='text')
     field_category = models.CharField(max_length=20, choices=FIELD_CATEGORY_CHOICES, default='client')
+    category = models.ForeignKey(StandardizedFieldCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='standardized_fields')
     validation_rules = models.TextField(blank=True)
     is_required = models.BooleanField(default=False)
     field_definition = models.TextField(blank=True)

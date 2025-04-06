@@ -1,10 +1,18 @@
 from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
-from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGenerationBatch, FormSet, StandardizedField
+from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGenerationBatch, FormSet, StandardizedField, StandardizedFieldCategory
+
+class StandardizedFieldCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StandardizedFieldCategory
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 class StandardizedFieldSerializer(serializers.ModelSerializer):
     validation = serializers.JSONField(required=False, allow_null=True)
     relationships = serializers.JSONField(required=False, allow_null=True)
+    category = StandardizedFieldCategorySerializer(read_only=True)
+    category_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
     
     class Meta:
         model = StandardizedField
@@ -12,7 +20,7 @@ class StandardizedFieldSerializer(serializers.ModelSerializer):
             'id', 'name', 'label', 'type', 'required', 'validation', 'relationships',
             'description', 'field_type', 'field_category', 'validation_rules', 
             'is_required', 'field_definition', 'llm_guide', 'metadata', 
-            'created_by', 'created_at', 'updated_at'
+            'created_by', 'created_at', 'updated_at', 'category', 'category_id'
         ]
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
