@@ -213,7 +213,8 @@ class StandardizedFieldViewSet(viewsets.ModelViewSet):
             f"Rule 2 for {field_name}",
         ]
         
-        return Response({'validation_rules': validation_rules})
+        # Return the rules as a JSON string
+        return Response({'rules': validation_rules})
 
 class FormFieldMappingViewSet(viewsets.ModelViewSet):
     queryset = FormFieldMapping.objects.all()

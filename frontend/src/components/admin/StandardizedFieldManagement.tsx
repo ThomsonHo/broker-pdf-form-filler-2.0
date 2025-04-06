@@ -36,7 +36,7 @@ const schema = yup.object().shape({
   description: yup.string(),
   field_type: yup.string().required('Field type is required'),
   field_category: yup.string().required('Field category is required'),
-  validation_rules: yup.array().of(yup.string()),
+  validation_rules: yup.string(),
   is_required: yup.boolean(),
   field_definition: yup.string().required('Field definition is required'),
   llm_guide: yup.string(),
@@ -113,7 +113,7 @@ export const StandardizedFieldManagement: React.FC = () => {
       setSelectedField(null);
       reset({
         is_required: false,
-        validation_rules: [],
+        validation_rules: '',
         metadata: {},
       });
     }
@@ -258,9 +258,11 @@ export const StandardizedFieldManagement: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Box display="flex" gap={0.5}>
-                    {field.validation_rules.map((rule, index) => (
-                      <Chip key={index} label={rule} size="small" />
-                    ))}
+                    {field.validation_rules ? (
+                      <Chip label={field.validation_rules} size="small" />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">-</Typography>
+                    )}
                   </Box>
                 </TableCell>
                 <TableCell>
@@ -470,21 +472,16 @@ export const StandardizedFieldManagement: React.FC = () => {
                 <Controller
                   name="validation_rules"
                   control={control}
-                  defaultValue={[]}
+                  defaultValue=""
                   render={({ field }) => (
-                    <Box display="flex" gap={0.5} flexWrap="wrap">
-                      {(field.value || []).map((rule, index) => (
-                        <Chip
-                          key={index}
-                          label={rule}
-                          onDelete={() => {
-                            const newRules = [...(field.value || [])];
-                            newRules.splice(index, 1);
-                            field.onChange(newRules);
-                          }}
-                        />
-                      ))}
-                    </Box>
+                    <TextField
+                      label="Validation Rules"
+                      fullWidth
+                      multiline
+                      rows={2}
+                      {...field}
+                      helperText="Enter validation rules as a JSON string"
+                    />
                   )}
                 />
               </Box>

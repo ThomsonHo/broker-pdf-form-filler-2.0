@@ -25,8 +25,9 @@ class StandardizedFieldSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
     def validate_validation_rules(self, value):
-        if not isinstance(value, list):
-            raise serializers.ValidationError("Validation rules must be a list")
+        # Accept either a string or a list
+        if value is not None and not isinstance(value, (str, list)):
+            raise serializers.ValidationError("Validation rules must be a string or a list")
         return value
     
     def validate_metadata(self, value):

@@ -22,7 +22,7 @@ export interface StandardizedField {
   };
   field_type: string;
   field_category: string;
-  validation_rules: string[];
+  validation_rules: string;
   is_required: boolean;
   field_definition: string;
   llm_guide: string;
@@ -54,7 +54,7 @@ export interface CreateStandardizedFieldData {
   description?: string;
   field_type: string;
   field_category: string;
-  validation_rules?: string[];
+  validation_rules?: string;
   is_required?: boolean;
   field_definition: string;
   llm_guide?: string;
@@ -67,7 +67,7 @@ export interface UpdateStandardizedFieldData {
   description?: string;
   field_type?: string;
   field_category?: string;
-  validation_rules?: string[];
+  validation_rules?: string;
   is_required?: boolean;
   field_definition?: string;
   llm_guide?: string;
@@ -112,12 +112,12 @@ class StandardizedFieldService {
     return response.data.guide;
   }
 
-  async suggestValidationRules(name: string, fieldType: string): Promise<string[]> {
+  async suggestValidationRules(name: string, fieldType: string): Promise<string> {
     const response = await api.post('/forms/standardized-fields/suggest_validation_rules/', {
       name,
       field_type: fieldType,
     });
-    return response.data.rules;
+    return JSON.stringify(response.data.rules);
   }
 
   // Standardized Field Category methods

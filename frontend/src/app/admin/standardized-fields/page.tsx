@@ -213,10 +213,10 @@ export default function StandardizedFieldsPage() {
         await standardizedFieldService.updateStandardizedField(selectedField.id, {
           name: cleanedData.name,
           field_type: cleanedData.type,
-          field_category: 'standard',
+          field_category: 'client',
           is_required: cleanedData.required,
           field_definition: cleanedData.label,
-          validation_rules: cleanedData.validation ? [JSON.stringify(cleanedData.validation)] : [],
+          validation_rules: cleanedData.validation ? JSON.stringify(cleanedData.validation) : '',
           llm_guide: cleanedData.relationships ? JSON.stringify(cleanedData.relationships) : '',
         });
         setSnackbar({
@@ -228,10 +228,10 @@ export default function StandardizedFieldsPage() {
         await standardizedFieldService.createStandardizedField({
           name: cleanedData.name,
           field_type: cleanedData.type,
-          field_category: 'standard',
+          field_category: 'client',
           is_required: cleanedData.required,
           field_definition: cleanedData.label,
-          validation_rules: cleanedData.validation ? [JSON.stringify(cleanedData.validation)] : [],
+          validation_rules: cleanedData.validation ? JSON.stringify(cleanedData.validation) : '',
           llm_guide: cleanedData.relationships ? JSON.stringify(cleanedData.relationships) : '',
         });
         setSnackbar({
