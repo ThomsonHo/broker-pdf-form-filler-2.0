@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Stepper,
@@ -10,11 +10,12 @@ import {
   Typography,
   Paper,
   Alert,
-  CircularProgress
+  CircularProgress,
+  LinearProgress
 } from '@mui/material';
 import { FormTemplateSelector } from './FormTemplateSelector';
 import { FormPreview } from './FormPreview';
-import { FormTemplate, GeneratedForm, pdfFormService } from '@/services/pdfFormService';
+import { FormTemplate, GeneratedForm, pdfFormService, QuotaInfo } from '@/services/pdfFormService';
 
 interface FormGenerationWorkflowProps {
   clientId: string;
@@ -35,6 +36,20 @@ export const FormGenerationWorkflow: React.FC<FormGenerationWorkflowProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
+
+  useEffect(() => {
+    loadQuotaInfo();
+  }, []);
+
+  const loadQuotaInfo = async () => {
+    try {
+      const info = await pdfFormService.getQuotaInfo();
+      setQuotaInfo(info);
+    } catch (err) {
+      console.error('Error loading quota info:', err);
+    }
+  };
 
   const handleNext = async () => {
     if (activeStep === 0) {
@@ -58,11 +73,18 @@ export const FormGenerationWorkflow: React.FC<FormGenerationWorkflowProps> = ({
         setGeneratedForms(batch.forms);
         setActiveStep(2);
         
+        // Refresh quota info
+        await loadQuotaInfo();
+        
         if (onComplete) {
           onComplete(batch.id);
         }
-      } catch (err) {
-        setError('Failed to generate forms');
+      } catch (err: any) {
+        if (err.response?.status === 403) {
+          setError('Daily form generation quota exceeded. Please try again tomorrow.');
+        } else {
+          setError('Failed to generate forms');
+        }
         console.error('Error generating forms:', err);
       } finally {
         setLoading(false);
@@ -119,6 +141,20 @@ export const FormGenerationWorkflow: React.FC<FormGenerationWorkflowProps> = ({
 
   return (
     <Paper sx={{ p: 3 }}>
+      {quotaInfo && (
+        <Box mb={3}>
+          <Typography variant="subtitle2" gutterBottom>
+            Daily Form Generation Quota: {quotaInfo.daily_used} / {quotaInfo.daily_quota}
+          </Typography>
+          <LinearProgress 
+            variant="determinate" 
+            value={(quotaInfo.daily_used / quotaInfo.daily_quota) * 100} 
+            color={quotaInfo.daily_remaining === 0 ? "error" : "primary"}
+            sx={{ height: 8, borderRadius: 4 }}
+          />
+        </Box>
+      )}
+
       <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
         {steps.map((label) => (
           <Step key={label}>

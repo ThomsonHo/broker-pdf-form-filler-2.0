@@ -3,30 +3,28 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Dashboard } from '@/components/dashboard/Dashboard';
-import { Navbar } from '@/components/navigation/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    // Check if user is authenticated
-    const accessToken = localStorage.getItem('access_token');
-    const refreshToken = localStorage.getItem('refresh_token');
-    const user = localStorage.getItem('user');
-
-    if (!accessToken || !refreshToken || !user) {
-      console.log('Missing authentication data:', {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-        hasUser: !!user
-      });
+    if (!isLoading && !isAuthenticated) {
       router.push('/login');
     }
-  }, [router]);
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <Dashboard />
     </div>
   );

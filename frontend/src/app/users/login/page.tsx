@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Box,
   Paper,
@@ -14,30 +14,29 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import * as yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 
-const loginSchema = yup.object().shape({
+interface LoginFormData {
+  email: string;
+  password: string;
+}
+
+const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup.string().required('Password is required'),
 });
 
-type LoginFormData = yup.InferType<typeof loginSchema>;
-
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info' | 'warning';
-  }>({
+  const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'info',
+    severity: 'success' as 'success' | 'error',
   });
 
   const {
@@ -45,10 +44,10 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
-    resolver: yupResolver(loginSchema),
+    resolver: yupResolver(schema),
   });
 
-  const handleFormSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
       await login(data.email, data.password);
@@ -57,12 +56,8 @@ export default function LoginPage() {
         message: 'Login successful!',
         severity: 'success',
       });
-      // Redirect to dashboard after a short delay
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
+      router.push('/dashboard');
     } catch (error) {
-      console.error('Error logging in:', error);
       setSnackbar({
         open: true,
         message: 'Invalid email or password',
@@ -84,7 +79,7 @@ export default function LoginPage() {
       </Typography>
 
       <Paper sx={{ p: 3, mt: 2, maxWidth: 600 }}>
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField
               fullWidth
@@ -143,5 +138,17 @@ export default function LoginPage() {
         </Alert>
       </Snackbar>
     </Box>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 } 

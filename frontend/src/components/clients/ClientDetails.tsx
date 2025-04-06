@@ -12,6 +12,7 @@ import {
   Button,
 } from '@mui/material';
 import { Client, fetchClientById } from '../../services/clientService';
+import { useRouter } from 'next/navigation';
 
 interface ClientDetailsProps {
   clientId: string;
@@ -20,6 +21,7 @@ interface ClientDetailsProps {
 }
 
 const ClientDetails: React.FC<ClientDetailsProps> = ({ clientId, onEdit, onClose }) => {
+  const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [client, setClient] = useState<Client | null>(null);
@@ -39,6 +41,14 @@ const ClientDetails: React.FC<ClientDetailsProps> = ({ clientId, onEdit, onClose
 
     loadClient();
   }, [clientId]);
+
+  const handleGenerateForms = () => {
+    // Navigate to forms page with client ID
+    router.push(`/forms?clientId=${clientId}`);
+    if (onClose) {
+      onClose();
+    }
+  };
 
   if (loading) {
     return (
@@ -84,6 +94,14 @@ const ClientDetails: React.FC<ClientDetailsProps> = ({ clientId, onEdit, onClose
           Client Details
         </Typography>
         <Box>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleGenerateForms}
+            sx={{ mr: 1 }}
+          >
+            Generate Forms
+          </Button>
           {onEdit && (
             <Button
               variant="contained"

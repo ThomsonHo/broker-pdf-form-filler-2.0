@@ -2,11 +2,11 @@
 
 import React, { Suspense, useEffect } from 'react';
 import { Box, CircularProgress } from '@mui/material';
-import { UserManagement } from '@/components/admin/UserManagement';
+import { TemplateManagement } from '@/components/admin/TemplateManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
-function UsersContent() {
+function TemplatesContent() {
   const { user, isAdmin, isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -26,19 +26,19 @@ function UsersContent() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <UserManagement onRefresh={() => {}} />
+      <TemplateManagement onRefresh={() => {}} />
     </Box>
   );
 }
 
-export default function UsersPage() {
+export default function TemplatesPage() {
   return (
     <Suspense fallback={
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
       </Box>
     }>
-      <UsersContent />
+      <TemplatesContent />
     </Suspense>
   );
 } 

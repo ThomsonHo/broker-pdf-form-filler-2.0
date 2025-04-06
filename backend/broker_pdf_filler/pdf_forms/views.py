@@ -73,6 +73,13 @@ class FormGenerationBatchViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Check user quota
+        if not FormGenerationService.check_user_quota(request.user):
+            return Response(
+                {'error': 'Daily form generation quota exceeded'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         try:
             # Create batch
             batch = FormGenerationService.create_batch(
@@ -131,6 +138,12 @@ class FormGenerationBatchViewSet(viewsets.ModelViewSet):
         response = FileResponse(batch.zip_file, as_attachment=True)
         response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
         return response
+    
+    @action(detail=False, methods=['get'])
+    def quota_info(self, request):
+        """Get the user's quota information."""
+        quota_info = FormGenerationService.get_user_quota_info(request.user)
+        return Response(quota_info)
 
 class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing generated forms."""

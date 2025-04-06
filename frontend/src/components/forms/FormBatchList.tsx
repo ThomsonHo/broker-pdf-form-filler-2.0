@@ -15,13 +15,14 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Tooltip
+  Tooltip,
+  LinearProgress
 } from '@mui/material';
 import {
   Download as DownloadIcon,
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
-import { FormGenerationBatch, pdfFormService } from '@/services/pdfFormService';
+import { FormGenerationBatch, pdfFormService, QuotaInfo } from '@/services/pdfFormService';
 import { FormPreview } from './FormPreview';
 
 export const FormBatchList: React.FC = () => {
@@ -29,9 +30,11 @@ export const FormBatchList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedBatch, setSelectedBatch] = useState<FormGenerationBatch | null>(null);
+  const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
 
   useEffect(() => {
     loadBatches();
+    loadQuotaInfo();
   }, []);
 
   const loadBatches = async () => {
@@ -45,6 +48,15 @@ export const FormBatchList: React.FC = () => {
       console.error('Error loading batches:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadQuotaInfo = async () => {
+    try {
+      const info = await pdfFormService.getQuotaInfo();
+      setQuotaInfo(info);
+    } catch (err) {
+      console.error('Error loading quota info:', err);
     }
   };
 
@@ -97,6 +109,20 @@ export const FormBatchList: React.FC = () => {
 
   return (
     <Box>
+      {quotaInfo && (
+        <Box mb={3}>
+          <Typography variant="subtitle2" gutterBottom>
+            Daily Form Generation Quota: {quotaInfo.daily_used} / {quotaInfo.daily_quota}
+          </Typography>
+          <LinearProgress 
+            variant="determinate" 
+            value={(quotaInfo.daily_used / quotaInfo.daily_quota) * 100} 
+            color={quotaInfo.daily_remaining === 0 ? "error" : "primary"}
+            sx={{ height: 8, borderRadius: 4 }}
+          />
+        </Box>
+      )}
+
       {selectedBatch ? (
         <Box>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>

@@ -46,6 +46,12 @@ export interface FormGenerationBatch {
   };
 }
 
+export interface QuotaInfo {
+  daily_quota: number;
+  daily_used: number;
+  daily_remaining: number;
+}
+
 class PDFFormService {
   private baseUrl = `${API_URL}/forms`;
 
@@ -91,6 +97,10 @@ class PDFFormService {
     return response.data;
   }
 
+  async deleteBatch(id: string): Promise<void> {
+    await axios.delete(`${this.baseUrl}/batches/${id}/`);
+  }
+
   async downloadForm(id: string): Promise<Blob> {
     const response = await axios.get(`${this.baseUrl}/forms/${id}/download/`, {
       responseType: 'blob'
@@ -102,6 +112,11 @@ class PDFFormService {
     const response = await axios.get(`${this.baseUrl}/batches/${id}/download_forms/`, {
       responseType: 'blob'
     });
+    return response.data;
+  }
+
+  async getQuotaInfo(): Promise<QuotaInfo> {
+    const response = await axios.get(`${this.baseUrl}/batches/quota_info/`);
     return response.data;
   }
 }

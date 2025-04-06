@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Box,
   Paper,
@@ -24,7 +24,7 @@ import { userService, UserRegistrationData } from '@/services/userService';
 import * as yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RegistrationFormData {
   email: string;
@@ -58,7 +58,7 @@ const registrationSchema = yup.object().shape({
   tr_phone_number: yup.string(),
 });
 
-export default function RegisterPage() {
+function RegisterContent() {
   const { register: registerUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -252,5 +252,17 @@ export default function RegisterPage() {
         </Alert>
       </Snackbar>
     </Container>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    }>
+      <RegisterContent />
+    </Suspense>
   );
 } 

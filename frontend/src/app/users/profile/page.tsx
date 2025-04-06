@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Box,
   Typography,
@@ -15,25 +15,33 @@ import {
   IconButton,
 } from '@mui/material';
 import { Edit as EditIcon, Save as SaveIcon, Cancel as CancelIcon } from '@mui/icons-material';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { userService } from '@/services/userService';
 import * as yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 
-const profileSchema = yup.object().shape({
+interface ProfileFormData {
+  first_name: string;
+  last_name: string;
+  email: string;
+  tr_name: string;
+  tr_license_number: string;
+  tr_phone_number: string;
+  broker_company: string;
+}
+
+const profileSchema = yup.object<ProfileFormData>().shape({
   first_name: yup.string().required('First name is required'),
   last_name: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
-  tr_name: yup.string(),
-  tr_license_number: yup.string(),
-  tr_phone_number: yup.string(),
-  broker_company: yup.string().required('Company is required'),
+  tr_name: yup.string().required('TR name is required'),
+  tr_license_number: yup.string().required('TR license number is required'),
+  tr_phone_number: yup.string().required('TR phone number is required'),
+  broker_company: yup.string().required('Broker company is required'),
 });
 
-type ProfileFormData = yup.InferType<typeof profileSchema>;
-
-export default function ProfilePage() {
+function ProfileContent() {
   const { user, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,8 +85,12 @@ export default function ProfilePage() {
   const handleFormSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
     try {
-      const updatedUser = await userService.updateProfile(data);
-      await updateUser(updatedUser);
+      await updateUser({
+        ...data,
+        id: user?.id || 0,
+        role: user?.role || 'user',
+        is_superuser: user?.is_superuser || false,
+      });
       setSnackbar({
         open: true,
         message: 'Profile updated successfully',
@@ -142,8 +154,9 @@ export default function ProfilePage() {
           <Grid item xs={12} display="flex" justifyContent="center">
             <Avatar
               sx={{ width: 100, height: 100, mb: 2 }}
-              src={user?.avatar_url}
-            />
+            >
+              {user?.first_name?.[0]}{user?.last_name?.[0]}
+            </Avatar>
           </Grid>
 
           <Grid item xs={12} sm={6}>
@@ -245,5 +258,17 @@ export default function ProfilePage() {
         </Alert>
       </Snackbar>
     </Box>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    }>
+      <ProfileContent />
+    </Suspense>
   );
 } 

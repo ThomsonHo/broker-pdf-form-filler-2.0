@@ -1,20 +1,15 @@
 'use client';
 
-import React from 'react';
-import {
-  Box,
-  Container,
-  Toolbar,
-} from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Toolbar } from '@mui/material';
 import Navbar from '@/components/navigation/Navbar';
 import NavigationDrawer from '@/components/navigation/Drawer';
-import { useState } from 'react';
 
-interface MainLayoutProps {
+interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-export default function MainLayout({ children }: MainLayoutProps) {
+export default function AppLayout({ children }: AppLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleDrawerToggle = () => {
@@ -31,12 +26,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${240}px)` },
+          mt: 8,
         }}
       >
-        <Toolbar />
-        <Container maxWidth="xl">
-          {children}
-        </Container>
+        {children}
       </Box>
     </Box>
   );

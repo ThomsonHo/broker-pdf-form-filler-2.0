@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Box,
   Paper,
@@ -11,8 +11,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import { useAuth } from '@/hooks/useAuth';
-import { userService } from '@/services/userService';
+import { useAuth } from '@/contexts/AuthContext';
 import * as yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -35,8 +34,8 @@ const passwordSchema = yup.object().shape({
 
 type PasswordFormData = yup.InferType<typeof passwordSchema>;
 
-export default function ChangePasswordPage() {
-  const { user: currentUser } = useAuth();
+function ChangePasswordContent() {
+  const { user: currentUser, changePassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -62,7 +61,7 @@ export default function ChangePasswordPage() {
 
     setIsLoading(true);
     try {
-      await userService.changePassword(data.old_password, data.new_password);
+      await changePassword(data.old_password, data.new_password);
       setSnackbar({
         open: true,
         message: 'Password changed successfully',
@@ -156,5 +155,17 @@ export default function ChangePasswordPage() {
         </Alert>
       </Snackbar>
     </Box>
+  );
+}
+
+export default function ChangePasswordPage() {
+  return (
+    <Suspense fallback={
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    }>
+      <ChangePasswordContent />
+    </Suspense>
   );
 } 

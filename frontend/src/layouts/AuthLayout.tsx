@@ -1,8 +1,13 @@
+'use client';
+
 import React from 'react';
-import { Outlet } from 'react-router-dom';
 import { Box, Container, Paper } from '@mui/material';
 
-const AuthLayout: React.FC = () => {
+interface AuthLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <Box
       sx={{
@@ -23,11 +28,9 @@ const AuthLayout: React.FC = () => {
             alignItems: 'center',
           }}
         >
-          <Outlet />
+          {children}
         </Paper>
       </Container>
     </Box>
   );
-};
-
-export default AuthLayout; 
+} 

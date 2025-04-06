@@ -17,6 +17,7 @@
 - You will always update the current_module doc for tasks / files that are completed
 - You will always pick up from where you left off and continue to ensure the coding is consistent
 - You will clear out the current_module doc when the module is completely coded and tested
+- You will always run the npm build to test for any issues after updating **any** frontend compenents
 
 ## Module 1: User Management
 - [ ] Finalize user roles and permissions design (dependency: finalized requirements)

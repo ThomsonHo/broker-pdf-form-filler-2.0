@@ -31,7 +31,7 @@ class AuthService {
   private baseUrl = `${API_BASE_URL}/auth`;
 
   async login(credentials: LoginCredentials): Promise<{ user: AuthUser; token: string }> {
-    const response = await axios.post(`${this.baseUrl}/login/`, credentials);
+    const response = await axios.post(`${this.baseUrl}/token/`, credentials);
     return response.data;
   }
 

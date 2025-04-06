@@ -1,6 +1,7 @@
 import os
 import tempfile
-from typing import Dict, List, Optional
+import json
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 from PyPDFForm.core.filler import Filler
 import pdfrw
@@ -8,6 +9,14 @@ from django.conf import settings
 from django.core.files import File
 from django.utils import timezone
 from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGenerationBatch
+
+# Load standardized fields
+STANDARDIZED_FIELDS_PATH = os.path.join(settings.BASE_DIR, 'requirement', 'references', 'standardized_fields.json')
+try:
+    with open(STANDARDIZED_FIELDS_PATH, 'r') as f:
+        STANDARDIZED_FIELDS = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    STANDARDIZED_FIELDS = {}
 
 class PDFFormFiller:
     """Service class for handling PDF form filling operations."""
@@ -182,4 +191,30 @@ class FormGenerationService:
         
         for form in expired_forms:
             form.delete_file()
-            form.delete() 
+            form.delete()
+    
+    @staticmethod
+    def check_user_quota(user) -> bool:
+        """Check if the user has exceeded their daily quota."""
+        today = timezone.now().date()
+        today_forms = GeneratedForm.objects.filter(
+            user=user,
+            created_at__date=today
+        ).count()
+        
+        return today_forms < settings.PDF_FORM_DAILY_QUOTA
+    
+    @staticmethod
+    def get_user_quota_info(user) -> Dict[str, Any]:
+        """Get the user's quota information."""
+        today = timezone.now().date()
+        today_forms = GeneratedForm.objects.filter(
+            user=user,
+            created_at__date=today
+        ).count()
+        
+        return {
+            'daily_quota': settings.PDF_FORM_DAILY_QUOTA,
+            'daily_used': today_forms,
+            'daily_remaining': settings.PDF_FORM_DAILY_QUOTA - today_forms
+        } 

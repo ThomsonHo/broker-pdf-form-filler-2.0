@@ -1,16 +1,21 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import {
   Box,
   Container,
   Typography,
   Tabs,
   Tab,
-  Paper
+  Paper,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { FormGenerationWorkflow } from '@/components/forms/FormGenerationWorkflow';
 import { FormBatchList } from '@/components/forms/FormBatchList';
+import { useSearchParams } from 'next/navigation';
+import { fetchClientById } from '@/services/clientService';
+import { Client } from '@/services/clientService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -38,8 +43,38 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-export default function FormsPage() {
+function FormsContent() {
+  const searchParams = useSearchParams();
   const [tabValue, setTabValue] = React.useState(0);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientData, setClientData] = useState<Client | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get client ID from URL query parameters
+    if (searchParams) {
+      const clientIdParam = searchParams.get('clientId');
+      if (clientIdParam) {
+        setClientId(clientIdParam);
+        loadClientData(clientIdParam);
+      }
+    }
+  }, [searchParams]);
+
+  const loadClientData = async (id: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchClientById(id);
+      setClientData(data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load client data. Please try again later.');
+      console.error('Error loading client data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -50,6 +85,12 @@ export default function FormsPage() {
       <Typography variant="h4" component="h1" gutterBottom>
         PDF Forms
       </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Paper sx={{ width: '100%', mb: 2 }}>
         <Tabs
@@ -64,14 +105,20 @@ export default function FormsPage() {
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
-          <FormGenerationWorkflow
-            clientId="current-client-id" // This should be passed from the parent component
-            clientData={{}} // This should be passed from the parent component
-            onComplete={(batchId) => {
-              console.log('Form generation completed:', batchId);
-              setTabValue(1); // Switch to history tab
-            }}
-          />
+          {loading ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <FormGenerationWorkflow
+              clientId={clientId || ""}
+              clientData={clientData || {}}
+              onComplete={(batchId) => {
+                console.log('Form generation completed:', batchId);
+                setTabValue(1); // Switch to history tab
+              }}
+            />
+          )}
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
@@ -79,5 +126,17 @@ export default function FormsPage() {
         </TabPanel>
       </Paper>
     </Container>
+  );
+}
+
+export default function FormsPage() {
+  return (
+    <Suspense fallback={
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    }>
+      <FormsContent />
+    </Suspense>
   );
 } 

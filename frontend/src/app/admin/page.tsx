@@ -1,31 +1,39 @@
 'use client';
 
-import React from 'react';
-import { Box, Typography, Paper, Grid, Button } from '@mui/material';
-import { useAuth } from '@/hooks/useAuth';
+import React, { Suspense, useEffect } from 'react';
+import { Box, Typography, Paper, Grid, Button, CircularProgress } from '@mui/material';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
-export default function AdminPanel() {
-  const { user } = useAuth();
+function AdminContent() {
+  const { user, isAdmin, isAuthenticated } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    if (!isAdmin) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, isAdmin, router]);
+
+  if (!isAuthenticated || !isAdmin) {
+    return null;
+  }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" component="h1" gutterBottom>
         Admin Dashboard
       </Typography>
-      
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Welcome, {user?.first_name} {user?.last_name}
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          You are logged in as an administrator.
-        </Typography>
-      </Paper>
-      
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Typography variant="subtitle1" gutterBottom>
+        Welcome, {user?.email}
+      </Typography>
+
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               User Management
@@ -33,13 +41,35 @@ export default function AdminPanel() {
             <Typography variant="body1" paragraph>
               Manage user accounts, roles, and permissions.
             </Typography>
-            <Button variant="contained" color="primary">
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={() => router.push('/users')}
+            >
               Manage Users
             </Button>
           </Paper>
         </Grid>
         
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, height: '100%' }}>
+            <Typography variant="h6" gutterBottom>
+              PDF Template Management
+            </Typography>
+            <Typography variant="body1" paragraph>
+              Manage PDF form templates and field mappings.
+            </Typography>
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={() => router.push('/templates')}
+            >
+              Manage Templates
+            </Button>
+          </Paper>
+        </Grid>
+        
+        <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               System Settings
@@ -54,5 +84,17 @@ export default function AdminPanel() {
         </Grid>
       </Grid>
     </Box>
+  );
+}
+
+export default function AdminPanel() {
+  return (
+    <Suspense fallback={
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    }>
+      <AdminContent />
+    </Suspense>
   );
 } 

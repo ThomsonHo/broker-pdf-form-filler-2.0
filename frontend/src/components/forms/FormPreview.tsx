@@ -15,11 +15,7 @@ import {
   ZoomOut as ZoomOutIcon,
   Download as DownloadIcon
 } from '@mui/icons-material';
-import { Document, Page, pdfjs } from 'react-pdf';
 import { GeneratedForm, pdfFormService } from '@/services/pdfFormService';
-
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface FormPreviewProps {
   form: GeneratedForm;
@@ -27,9 +23,6 @@ interface FormPreviewProps {
 }
 
 export const FormPreview: React.FC<FormPreviewProps> = ({ form, onDownload }) => {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,25 +31,6 @@ export const FormPreview: React.FC<FormPreviewProps> = ({ form, onDownload }) =>
       setLoading(false);
     }
   }, [form.download_url]);
-
-  const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setLoading(false);
-  };
-
-  const handleDocumentLoadError = (error: Error) => {
-    setError('Failed to load PDF document');
-    setLoading(false);
-    console.error('Error loading PDF:', error);
-  };
-
-  const handleZoomIn = () => {
-    setScale(prev => Math.min(prev + 0.1, 2.0));
-  };
-
-  const handleZoomOut = () => {
-    setScale(prev => Math.max(prev - 0.1, 0.5));
-  };
 
   const handleDownload = async () => {
     try {
@@ -101,16 +75,6 @@ export const FormPreview: React.FC<FormPreviewProps> = ({ form, onDownload }) =>
           {form.template_name}
         </Typography>
         <Box>
-          <Tooltip title="Zoom Out">
-            <IconButton onClick={handleZoomOut} disabled={scale <= 0.5}>
-              <ZoomOutIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Zoom In">
-            <IconButton onClick={handleZoomIn} disabled={scale >= 2.0}>
-              <ZoomInIcon />
-            </IconButton>
-          </Tooltip>
           <Tooltip title="Download">
             <IconButton onClick={handleDownload}>
               <DownloadIcon />
@@ -125,36 +89,17 @@ export const FormPreview: React.FC<FormPreviewProps> = ({ form, onDownload }) =>
           borderRadius: 1,
           overflow: 'hidden',
           maxHeight: '70vh',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          p: 3
         }}
       >
-        <Document
-          file={form.download_url}
-          onLoadSuccess={handleDocumentLoadSuccess}
-          onLoadError={handleDocumentLoadError}
-          loading={
-            <Box display="flex" justifyContent="center" p={3}>
-              <CircularProgress />
-            </Box>
-          }
-        >
-          {Array.from(new Array(numPages), (el, index) => (
-            <Page
-              key={`page_${index + 1}`}
-              pageNumber={index + 1}
-              scale={scale}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-            />
-          ))}
-        </Document>
-      </Box>
-
-      {numPages && (
-        <Typography variant="body2" color="text.secondary" align="center" mt={1}>
-          Page {pageNumber} of {numPages}
+        <Typography variant="body1" color="text.secondary">
+          Click the download button to view and save the PDF.
         </Typography>
-      )}
+      </Box>
     </Paper>
   );
 }; 

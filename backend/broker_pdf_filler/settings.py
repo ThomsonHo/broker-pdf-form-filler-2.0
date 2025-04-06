@@ -225,6 +225,11 @@ PDF_FORM_RETENTION_DAYS = int(os.getenv('PDF_FORM_RETENTION_DAYS', '45'))
 MAX_DAILY_FORM_SETS = int(os.getenv('MAX_DAILY_FORM_SETS', '10'))
 MAX_MONTHLY_FORM_SETS = int(os.getenv('MAX_MONTHLY_FORM_SETS', '300'))
 
+# PDF Form Settings
+PDF_FORM_DAILY_QUOTA = 10
+PDF_FORM_MONTHLY_QUOTA = 100
+PDF_FORM_RETENTION_DAYS = 45
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Box, Button, Icon, Grid } from '@mui/material';
 import Link from 'next/link';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 interface QuickLink {
   id: number;
@@ -16,14 +17,27 @@ interface QuickAccessPanelProps {
 }
 
 export const QuickAccessPanel: React.FC<QuickAccessPanelProps> = ({ links = [] }) => {
-  if (!Array.isArray(links)) {
-    console.warn('QuickAccessPanel received non-array links:', links);
+  // Default links if none are provided
+  const defaultLinks: QuickLink[] = [
+    {
+      id: 1,
+      title: 'Generate Forms',
+      url: '/forms',
+      icon: 'description'
+    }
+  ];
+
+  // Use provided links or default links
+  const displayLinks = links.length > 0 ? links : defaultLinks;
+
+  if (!Array.isArray(displayLinks)) {
+    console.warn('QuickAccessPanel received non-array links:', displayLinks);
     return null;
   }
 
   return (
     <Grid container spacing={2}>
-      {links.map((link) => (
+      {displayLinks.map((link) => (
         <Grid item xs={12} sm={6} md={3} key={link.id}>
           <Link href={link.url} passHref legacyBehavior>
             <Button
@@ -38,7 +52,11 @@ export const QuickAccessPanel: React.FC<QuickAccessPanelProps> = ({ links = [] }
                 gap: 1
               }}
             >
-              <Icon>{link.icon}</Icon>
+              {link.icon === 'description' ? (
+                <DescriptionIcon />
+              ) : (
+                <Icon>{link.icon}</Icon>
+              )}
               {link.title}
             </Button>
           </Link>
