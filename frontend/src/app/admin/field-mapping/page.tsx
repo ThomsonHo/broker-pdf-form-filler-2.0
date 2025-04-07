@@ -29,6 +29,8 @@ import {
   Tab,
   Divider,
   SelectChangeEvent,
+  Stack,
+  FormHelperText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -64,8 +66,8 @@ type ExtendedFieldMapping = FieldMapping;
 
 const fieldMappingSchema = yup.object().shape({
   pdf_field_name: yup.string().required('PDF field name is required'),
-  system_field_name: yup.string().required('System field name is required'),
-  field_type: yup.string().required('Field type is required'),
+  system_field_name: yup.string(),
+  standardized_field_id: yup.string().uuid('Must be a valid UUID'),
   validation_rules: yup.string(),
   transformation_rules: yup.string(),
   field_definition_override: yup.string(),
@@ -100,6 +102,11 @@ export default function FieldMappingPage() {
     watch,
   } = useForm<FieldMappingFormData>({
     resolver: yupResolver(fieldMappingSchema),
+    defaultValues: {
+      pdf_field_name: '',
+      system_field_name: '',
+      standardized_field_id: ''
+    }
   });
 
   useEffect(() => {
@@ -113,12 +120,23 @@ export default function FieldMappingPage() {
     }
   }, [selectedTemplate]);
 
+  useEffect(() => {
+    // If we have a selected mapping, set the form values
+    if (selectedMapping) {
+      const standardizedFieldId = selectedMapping.standardized_field_id || selectedMapping.standardized_field?.id || '';
+      reset({
+        pdf_field_name: selectedMapping.pdf_field_name,
+        system_field_name: selectedMapping.system_field_name || '',
+        standardized_field_id: standardizedFieldId
+      });
+    }
+  }, [selectedMapping, reset]);
+
   const fetchTemplates = async () => {
     try {
       const response = await templateService.getTemplates();
       setTemplates(response.results);
     } catch (error) {
-      console.error('Error fetching templates:', error);
       setSnackbar({
         open: true,
         message: 'Error fetching templates',
@@ -132,7 +150,6 @@ export default function FieldMappingPage() {
       const response = await standardizedFieldService.getStandardizedFields();
       setStandardizedFields(response.results);
     } catch (error) {
-      console.error('Error fetching standardized fields:', error);
       setSnackbar({
         open: true,
         message: 'Error fetching standardized fields',
@@ -145,12 +162,10 @@ export default function FieldMappingPage() {
     try {
       setLoading(true);
       const response = await templateService.getFieldMappings(templateId);
-      console.log('Field mappings response:', response);
       // Ensure response is an array
       const mappings = Array.isArray(response) ? response : [];
       setFieldMappings(mappings);
     } catch (error) {
-      console.error('Error fetching field mappings:', error);
       setSnackbar({
         open: true,
         message: 'Error fetching field mappings',
@@ -169,20 +184,28 @@ export default function FieldMappingPage() {
     setSelectedTemplate(template);
   };
 
-  const handleOpenDialog = (mapping?: FieldMapping) => {
+  const handleEdit = (mapping: FieldMapping | null) => {
+    setSelectedMapping(mapping);
     if (mapping) {
-      setSelectedMapping(mapping);
-      reset({
+      // Get the standardized field ID from either standardized_field_id or standardized_field.id
+      const standardizedFieldId = mapping.standardized_field?.id || mapping.standardized_field_id || '';
+      
+      // Initialize form data
+      const formData = {
         pdf_field_name: mapping.pdf_field_name,
-        system_field_name: mapping.system_field_name,
-        field_type: mapping.field_type,
-        validation_rules: mapping.validation_rules || '',
-        transformation_rules: mapping.transformation_rules || '',
-        field_definition_override: mapping.field_definition_override || '',
-      });
+        system_field_name: mapping.system_field_name || '',
+        standardized_field_id: standardizedFieldId
+      };
+      
+      // Reset the form with the mapping data
+      reset(formData);
     } else {
-      setSelectedMapping(null);
-      reset({});
+      // Reset form for new mapping
+      reset({
+        pdf_field_name: '',
+        system_field_name: '',
+        standardized_field_id: ''
+      });
     }
     setOpenDialog(true);
   };
@@ -197,10 +220,16 @@ export default function FieldMappingPage() {
     if (!selectedTemplate) return;
     
     try {
+      // Ensure standardized_field_id is properly set
+      const formData = {
+        ...data,
+        standardized_field_id: data.standardized_field_id || undefined
+      };
+      
       if (selectedMapping) {
-        await templateService.updateFieldMapping(selectedTemplate.id, selectedMapping.id, data);
+        await templateService.updateFieldMapping(selectedTemplate.id, selectedMapping.id, formData);
       } else {
-        await templateService.createFieldMapping(selectedTemplate.id, data);
+        await templateService.createFieldMapping(selectedTemplate.id, formData);
       }
       setSnackbar({
         open: true,
@@ -209,8 +238,11 @@ export default function FieldMappingPage() {
       });
       handleCloseDialog();
       fetchFieldMappings(selectedTemplate.id);
-    } catch (error) {
-      console.error('Error saving field mapping:', error);
+    } catch (error: any) {
+      if (error.response) {
+        if (error.response.data.template) {
+        }
+      }
       setSnackbar({
         open: true,
         message: 'Error saving field mapping',
@@ -284,7 +316,7 @@ export default function FieldMappingPage() {
                   variant="contained"
                   color="primary"
                   startIcon={<AddIcon />}
-                  onClick={() => handleOpenDialog()}
+                  onClick={() => handleEdit(null)}
                 >
                   Add Field Mapping
                 </Button>
@@ -301,7 +333,7 @@ export default function FieldMappingPage() {
                       <TableRow>
                         <TableCell>PDF Field Name</TableCell>
                         <TableCell>System Field Name</TableCell>
-                        <TableCell>Field Type</TableCell>
+                        <TableCell>Standardized Field</TableCell>
                         <TableCell>Validation Rules</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
@@ -310,11 +342,13 @@ export default function FieldMappingPage() {
                       {fieldMappings.map((mapping) => (
                         <TableRow key={mapping.id}>
                           <TableCell>{mapping.pdf_field_name}</TableCell>
-                          <TableCell>{mapping.system_field_name}</TableCell>
-                          <TableCell>{mapping.field_type}</TableCell>
+                          <TableCell>{mapping.system_field_name || '-'}</TableCell>
+                          <TableCell>
+                            {mapping.standardized_field?.name || '-'}
+                          </TableCell>
                           <TableCell>{mapping.validation_rules || '-'}</TableCell>
                           <TableCell>
-                            <IconButton onClick={() => handleOpenDialog(mapping)} size="small">
+                            <IconButton onClick={() => handleEdit(mapping)} size="small">
                               <EditIcon />
                             </IconButton>
                             <IconButton onClick={() => handleDeleteMapping(mapping.id)} size="small">
@@ -341,123 +375,79 @@ export default function FieldMappingPage() {
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>
-          {selectedMapping ? 'Edit Field Mapping' : 'Add Field Mapping'}
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseDialog}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+          {selectedMapping ? 'Edit Field Mapping' : 'Create Field Mapping'}
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'grid', gap: 2, pt: 2 }}>
-            <Controller
-              name="pdf_field_name"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="PDF Field Name"
-                  error={!!errors.pdf_field_name}
-                  helperText={errors.pdf_field_name?.message}
-                />
-              )}
-            />
-
-            <Controller
-              name="system_field_name"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="System Field Name"
-                  error={!!errors.system_field_name}
-                  helperText={errors.system_field_name?.message}
-                />
-              )}
-            />
-
-            <Controller
-              name="field_type"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <FormControl fullWidth error={!!errors.field_type}>
-                  <InputLabel>Field Type</InputLabel>
-                  <Select {...field} label="Field Type">
-                    {FIELD_TYPES.map((type) => (
-                      <MenuItem key={type.value} value={type.value}>
-                        {type.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.field_type && (
-                    <Typography color="error" variant="caption">
-                      {errors.field_type.message}
-                    </Typography>
-                  )}
-                </FormControl>
-              )}
-            />
-
-            <Controller
-              name="validation_rules"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Validation Rules"
-                  multiline
-                  rows={3}
-                />
-              )}
-            />
-
-            <Controller
-              name="transformation_rules"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Transformation Rules"
-                  multiline
-                  rows={3}
-                />
-              )}
-            />
-
-            <Controller
-              name="field_definition_override"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Field Definition Override"
-                  multiline
-                  rows={3}
-                />
-              )}
-            />
+          <Box component="form" onSubmit={handleSubmit(handleSave)} sx={{ mt: 2 }}>
+            <Stack spacing={2}>
+              <Controller
+                name="pdf_field_name"
+                control={control}
+                defaultValue=""
+                rules={{ required: 'PDF Field Name is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    label="PDF Field Name"
+                    fullWidth
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="system_field_name"
+                control={control}
+                defaultValue=""
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="System Field Name"
+                    fullWidth
+                    value={field.value || ''}
+                  />
+                )}
+              />
+              <Controller
+                name="standardized_field_id"
+                control={control}
+                defaultValue=""
+                rules={{ required: 'Standardized Field is required' }}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl fullWidth error={!!error}>
+                    <InputLabel>Standardized Field</InputLabel>
+                    <Select
+                      {...field}
+                      value={field.value || ''}
+                      label="Standardized Field"
+                    >
+                      {standardizedFields.map((field) => (
+                        <MenuItem key={field.id} value={field.id}>
+                          {field.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {error && (
+                      <FormHelperText>{error.message}</FormHelperText>
+                    )}
+                    {selectedMapping?.standardized_field && !field.value && (
+                      <FormHelperText>
+                        Current: {selectedMapping.standardized_field.name}
+                      </FormHelperText>
+                    )}
+                  </FormControl>
+                )}
+              />
+            </Stack>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit(handleSave)} variant="contained" color="primary">
+          <Button
+            onClick={handleSubmit(handleSave)}
+            variant="contained"
+            color="primary"
+          >
             {selectedMapping ? 'Update' : 'Create'}
           </Button>
         </DialogActions>

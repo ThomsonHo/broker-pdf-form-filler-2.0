@@ -40,8 +40,20 @@ export interface FieldMapping {
   id: string;
   template_id: string;
   pdf_field_name: string;
-  system_field_name: string;
-  field_type: string;
+  system_field_name?: string | null;
+  standardized_field_id?: string | null;
+  standardized_field?: {
+    id: string;
+    name: string;
+    label: string;
+    field_type: string;
+    field_category: string;
+    display_category: string;
+    created_at: string;
+    updated_at: string;
+    created_by: string | null;
+    updated_by: string | null;
+  } | null;
   transformation_rules?: string;
   validation_rules?: string;
   field_definition_override?: string;
@@ -51,8 +63,8 @@ export interface FieldMapping {
 
 export interface CreateFieldMappingData {
   pdf_field_name: string;
-  system_field_name: string;
-  field_type: string;
+  system_field_name?: string;
+  standardized_field_id?: string;
   transformation_rules?: string;
   validation_rules?: string;
   field_definition_override?: string;
@@ -69,10 +81,7 @@ export interface UpdateFieldMappingData {
 
 export class TemplateService {
   async getTemplates(): Promise<{ count: number; next: string | null; previous: string | null; results: Template[] }> {
-    console.log('TemplateService.getTemplates called');
     const response = await api.get('/forms/templates/');
-    console.log('API response:', response);
-    console.log('API response data:', response.data);
     return response.data;
   }
 
@@ -97,12 +106,6 @@ export class TemplateService {
       formData.append('is_active', data.is_active?.toString() || 'true');
       formData.append('template_file', data.template_file);
       formData.append('file_name', data.template_file.name);
-    }
-    
-    // Debug: Log FormData contents
-    console.log('FormData being sent to server:');
-    for (const pair of formData.entries()) {
-      console.log(pair[0] + ': ' + pair[1]);
     }
     
     const response = await api.post('/forms/templates/', formData, {
@@ -167,7 +170,6 @@ export class TemplateService {
     window.URL.revokeObjectURL(url);
   }
 
-  // Field Mapping Methods
   async getFieldMappings(templateId: string): Promise<FieldMapping[]> {
     const response = await api.get(`/forms/templates/${templateId}/field-mappings/`);
     return response.data;
@@ -179,8 +181,17 @@ export class TemplateService {
   }
 
   async createFieldMapping(templateId: string, data: CreateFieldMappingData): Promise<FieldMapping> {
-    const response = await api.post(`/forms/templates/${templateId}/field-mappings/`, data);
-    return response.data;
+    try {
+      const requestData = {
+        ...data,
+        template: templateId
+      };
+      
+      const response = await api.post(`/forms/templates/${templateId}/field-mappings/`, requestData);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
   }
 
   async updateFieldMapping(templateId: string, mappingId: string, data: UpdateFieldMappingData): Promise<FieldMapping> {
@@ -203,14 +214,12 @@ export class TemplateService {
   }
 
   async getTemplatesWithPagination(page: number, pageSize: number): Promise<{ count: number; next: string | null; previous: string | null; results: Template[] }> {
-    console.log(`TemplateService.getTemplatesWithPagination called with page=${page}, pageSize=${pageSize}`);
     const response = await api.get('/forms/templates/', {
       params: {
-        page: page + 1, // Django uses 1-based indexing
+        page: page + 1,
         page_size: pageSize
       }
     });
-    console.log('API response with pagination:', response);
     return response.data;
   }
 }
