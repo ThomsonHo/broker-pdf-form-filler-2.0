@@ -11,15 +11,31 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    setIsMounted(true);
   }, []);
 
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
   };
+
+  if (!isMounted) {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            width: '100%',
+            mt: 8,
+          }}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -34,7 +50,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           mt: 8,
         }}
       >
-        {mounted ? children : null}
+        {children}
       </Box>
     </Box>
   );
