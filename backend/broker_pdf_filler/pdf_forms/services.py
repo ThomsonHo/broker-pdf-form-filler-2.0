@@ -12,6 +12,11 @@ from .models import FormTemplate, FormFieldMapping, GeneratedForm, FormGeneratio
 import PyPDF2
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django.core.files.storage import default_storage
+import logging
+
+# Get logger
+logger = logging.getLogger(__name__)
 
 # Load standardized fields
 STANDARDIZED_FIELDS_PATH = os.path.join(settings.BASE_DIR, 'requirement', 'references', 'standardized_fields.json')
@@ -237,16 +242,37 @@ def extract_pdf_fields(pdf_path):
             reader = PyPDF2.PdfReader(file)
             fields = []
             
-            for page in reader.pages:
-                if '/AcroForm' in page:
-                    acroform = page['/AcroForm']
+            # Check if the PDF has form fields
+            if reader.trailer and '/Root' in reader.trailer:
+                root = reader.trailer['/Root']
+                if isinstance(root, PyPDF2.generic.IndirectObject):
+                    root = root.get_object()
+                
+                if '/AcroForm' in root:
+                    acroform = root['/AcroForm']
                     if '/Fields' in acroform:
                         for field in acroform['/Fields']:
+                            if isinstance(field, PyPDF2.generic.IndirectObject):
+                                field = field.get_object()
                             if '/T' in field:
-                                fields.append(field['/T'])
+                                field_name = field['/T']
+                                fields.append(field_name)
             
+            # If no fields found at document level, try page level
+            if not fields:
+                for page in reader.pages:
+                    if '/Annots' in page:
+                        for annot in page['/Annots']:
+                            if isinstance(annot, PyPDF2.generic.IndirectObject):
+                                annot = annot.get_object()
+                            if '/Subtype' in annot and annot['/Subtype'] == '/Widget' and '/T' in annot:
+                                field_name = annot['/T']
+                                fields.append(field_name)
+            
+            logger.info(f"Found {len(fields)} fields in PDF: {pdf_path}")
             return list(set(fields))  # Remove duplicates
     except Exception as e:
+        logger.error(f"Error extracting fields from PDF: {str(e)}")
         raise ValidationError(_('Error extracting fields from PDF: {}').format(str(e)))
 
 def validate_field_mapping(mapping):
@@ -281,4 +307,49 @@ def validate_field_mapping(mapping):
         try:
             json.loads(mapping['transformation_rules'])
         except json.JSONDecodeError:
-            raise ValidationError(_('Invalid transformation rules JSON')) 
+            raise ValidationError(_('Invalid transformation rules JSON'))
+
+def extract_and_map_pdf_fields(template: FormTemplate, user=None) -> None:
+    """
+    Extract form fields from a PDF file and create/update field mappings.
+    For new templates, creates all field mappings.
+    For existing templates, only adds new fields that don't exist.
+    
+    Args:
+        template: FormTemplate instance
+        user: Optional user who is performing the operation
+    """
+    if not template.template_file:
+        return
+    
+    try:
+        # Get the path to the PDF file
+        pdf_path = default_storage.path(template.template_file.name)
+        
+        # Extract fields from PDF
+        fields = extract_pdf_fields(pdf_path)
+        
+        if not fields:
+            logger.warning(f"No fields found in PDF: {pdf_path}")
+            return
+        
+        # Get existing field mappings
+        existing_mappings = {
+            mapping.pdf_field_name: mapping
+            for mapping in template.field_mappings.all()
+        }
+        
+        # Create new mappings for fields that don't exist
+        for field_name in fields:
+            if field_name not in existing_mappings:
+                FormFieldMapping.objects.create(
+                    template=template,
+                    pdf_field_name=field_name,
+                    created_by=user
+                )
+                logger.info(f"Created new field mapping: {field_name} for template: {template.name}")
+    
+    except Exception as e:
+        logger.error(f"Error extracting fields from PDF: {str(e)}")
+        # Don't raise the exception to prevent the save from failing
+        # The field extraction can be retried later if needed 

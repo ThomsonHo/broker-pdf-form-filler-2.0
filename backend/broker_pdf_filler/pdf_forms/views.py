@@ -15,7 +15,7 @@ from .serializers import (
     GeneratedFormSerializer, FormGenerationBatchSerializer,
     FormSetSerializer, StandardizedFieldSerializer, StandardizedFieldCategorySerializer
 )
-from .services import FormGenerationService, extract_pdf_fields, validate_field_mapping
+from .services import FormGenerationService, extract_pdf_fields, validate_field_mapping, extract_and_map_pdf_fields
 from .permissions import IsAdminUser, IsBrokerUser
 from rest_framework.pagination import PageNumberPagination
 
@@ -33,18 +33,17 @@ class FormTemplateViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at', 'updated_at']
     
     def get_queryset(self):
-        queryset = FormTemplate.objects.all()
-        category = self.request.query_params.get('category', None)
-        if category:
-            queryset = queryset.filter(category=category)
-        return queryset
+        return FormTemplate.objects.all()
     
     def perform_create(self, serializer):
-        template_file = self.request.FILES.get('template_file')
-        if template_file:
-            serializer.save(file_name=template_file.name)
-        else:
-            serializer.save(created_by=self.request.user)
+        """Create a new form template and extract its fields."""
+        template = serializer.save(created_by=self.request.user)
+        extract_and_map_pdf_fields(template, user=self.request.user)
+    
+    def perform_update(self, serializer):
+        """Update a form template and extract any new fields."""
+        template = serializer.save()
+        extract_and_map_pdf_fields(template, user=self.request.user)
     
     @action(detail=True, methods=['get'])
     def check_deletable(self, request, pk=None):
