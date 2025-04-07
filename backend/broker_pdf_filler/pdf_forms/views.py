@@ -17,6 +17,7 @@ from .serializers import (
 )
 from .services import FormGenerationService, extract_pdf_fields, validate_field_mapping
 from .permissions import IsAdminUser, IsBrokerUser
+from rest_framework.pagination import PageNumberPagination
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,8 @@ class StandardizedFieldViewSet(viewsets.ModelViewSet):
     filterset_fields = ['field_type', 'field_category', 'is_required']
     search_fields = ['name', 'description', 'field_definition']
     ordering_fields = ['name', 'field_category', 'created_at']
+    pagination_class = PageNumberPagination
+    page_size = 10
     
     def get_queryset(self):
         try:
@@ -308,6 +311,8 @@ class StandardizedFieldCategoryViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
+    pagination_class = PageNumberPagination
+    page_size = 10
     
     def get_queryset(self):
         return StandardizedFieldCategory.objects.all()

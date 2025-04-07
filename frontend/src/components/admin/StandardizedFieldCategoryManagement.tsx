@@ -18,6 +18,7 @@ import {
   Typography,
   Snackbar,
   Alert,
+  TablePagination,
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { standardizedFieldService, StandardizedFieldCategory } from '../../services/standardizedFieldService';
@@ -28,6 +29,9 @@ export default function StandardizedFieldCategoryManagement() {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<StandardizedFieldCategory | null>(null);
   const [formData, setFormData] = useState<Partial<StandardizedFieldCategory>>({});
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -40,13 +44,16 @@ export default function StandardizedFieldCategoryManagement() {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [page, rowsPerPage]);
 
   const fetchCategories = async () => {
     try {
-      const data = await standardizedFieldService.getStandardizedFieldCategories();
-      const categoriesArray = Array.isArray(data) ? data : [];
-      setCategories(categoriesArray);
+      const response = await standardizedFieldService.getStandardizedFieldCategories({
+        page: page + 1,
+        page_size: rowsPerPage
+      });
+      setCategories(response.results);
+      setTotalCount(response.count);
     } catch (error) {
       console.error('Error fetching standardized field categories:', error);
       setSnackbar({
@@ -136,6 +143,19 @@ export default function StandardizedFieldCategoryManagement() {
     }));
   };
 
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar((prev: { open: boolean; message: string; severity: 'success' | 'error' }) => ({ ...prev, open: false }));
+  };
+
   if (loading) {
     return <Typography>Loading...</Typography>;
   }
@@ -190,6 +210,15 @@ export default function StandardizedFieldCategoryManagement() {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={totalCount}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </TableContainer>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
@@ -226,10 +255,10 @@ export default function StandardizedFieldCategoryManagement() {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        onClose={handleCloseSnackbar}
       >
         <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          onClose={handleCloseSnackbar}
           severity={snackbar.severity}
         >
           {snackbar.message}

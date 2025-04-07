@@ -225,11 +225,11 @@ export default function StandardizedFieldsPage() {
   const loadFields = async () => {
     try {
       const [fieldsData, categoriesData] = await Promise.all([
-        standardizedFieldService.getFields(),
+        standardizedFieldService.getStandardizedFields(),
         standardizedFieldService.getStandardizedFieldCategories()
       ]);
-      setFields(fieldsData);
-      setCategories(categoriesData);
+      setFields(fieldsData.results);
+      setCategories(categoriesData.results);
     } catch (error) {
       setSnackbar({
         open: true,
@@ -246,14 +246,14 @@ export default function StandardizedFieldsPage() {
   const onSubmit = async (data: FieldFormData) => {
     try {
       if (selectedField) {
-        await standardizedFieldService.updateField(selectedField.id, data);
+        await standardizedFieldService.updateStandardizedField(selectedField.id, data);
         setSnackbar({
           open: true,
           message: 'Field updated successfully',
           severity: 'success',
         });
       } else {
-        await standardizedFieldService.createField(data);
+        await standardizedFieldService.createStandardizedField(data);
         setSnackbar({
           open: true,
           message: 'Field created successfully',

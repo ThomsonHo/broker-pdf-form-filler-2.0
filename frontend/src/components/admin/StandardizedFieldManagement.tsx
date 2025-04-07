@@ -24,6 +24,7 @@ import {
   MenuItem,
   Switch,
   FormControlLabel,
+  TablePagination,
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, AutoFixHigh as AutoFixHighIcon } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
@@ -70,6 +71,9 @@ export const StandardizedFieldManagement: React.FC = () => {
   const [selectedField, setSelectedField] = useState<StandardizedField | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   
   const { control, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -82,12 +86,16 @@ export const StandardizedFieldManagement: React.FC = () => {
   useEffect(() => {
     fetchFields();
     fetchCategories();
-  }, []);
+  }, [page, rowsPerPage]);
   
   const fetchFields = async () => {
     try {
-      const data = await standardizedFieldService.getStandardizedFields();
-      setFields(data);
+      const response = await standardizedFieldService.getStandardizedFields({
+        page: page + 1,
+        page_size: rowsPerPage
+      });
+      setFields(response.results);
+      setTotalCount(response.count);
     } catch (err) {
       setError('Failed to fetch standardized fields');
     }
@@ -95,8 +103,8 @@ export const StandardizedFieldManagement: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const data = await standardizedFieldService.getStandardizedFieldCategories();
-      setCategories(data);
+      const response = await standardizedFieldService.getStandardizedFieldCategories();
+      setCategories(response.results);
     } catch (err) {
       setError('Failed to fetch standardized field categories');
     }
@@ -206,6 +214,15 @@ export const StandardizedFieldManagement: React.FC = () => {
     }
   };
   
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+  
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -269,10 +286,16 @@ export const StandardizedFieldManagement: React.FC = () => {
                   {new Date(field.created_at).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
-                  <IconButton onClick={() => handleOpenDialog(field)}>
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleOpenDialog(field)}
+                  >
                     <EditIcon />
                   </IconButton>
-                  <IconButton onClick={() => handleDelete(field.id)}>
+                  <IconButton
+                    color="error"
+                    onClick={() => handleDelete(field.id)}
+                  >
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -280,6 +303,15 @@ export const StandardizedFieldManagement: React.FC = () => {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={totalCount}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </TableContainer>
       
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
