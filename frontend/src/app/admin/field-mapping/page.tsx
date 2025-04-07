@@ -99,6 +99,7 @@ export default function FieldMappingPage() {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
     watch,
   } = useForm<FieldMappingFormData>({
@@ -120,18 +121,6 @@ export default function FieldMappingPage() {
       fetchFieldMappings(selectedTemplate.id);
     }
   }, [selectedTemplate]);
-
-  useEffect(() => {
-    // If we have a selected mapping, set the form values
-    if (selectedMapping) {
-      const standardizedFieldId = selectedMapping.standardized_field_id || selectedMapping.standardized_field?.id || '';
-      reset({
-        pdf_field_name: selectedMapping.pdf_field_name,
-        system_field_name: selectedMapping.system_field_name || '',
-        standardized_field_id: standardizedFieldId
-      });
-    }
-  }, [selectedMapping, reset]);
 
   const fetchTemplates = async () => {
     try {
@@ -200,6 +189,13 @@ export default function FieldMappingPage() {
       
       // Reset the form with the mapping data
       reset(formData);
+      
+      // Directly set the field value to ensure the dropdown reflects the correct value
+      setTimeout(() => {
+        if (standardizedFieldId) {
+          setValue('standardized_field_id', standardizedFieldId);
+        }
+      }, 0);
     } else {
       // Reset form for new mapping
       reset({
@@ -436,30 +432,38 @@ export default function FieldMappingPage() {
                 control={control}
                 defaultValue=""
                 rules={{ required: 'Standardized Field is required' }}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl fullWidth error={!!error}>
-                    <InputLabel>Standardized Field</InputLabel>
-                    <Select
-                      {...field}
-                      value={field.value || ''}
-                      label="Standardized Field"
-                    >
-                      {standardizedFields.map((field) => (
-                        <MenuItem key={field.id} value={field.id}>
-                          {field.name}
+                render={({ field, fieldState: { error } }) => {
+                  // Ensure we have the correct value displayed in the dropdown
+                  const currentValue = field.value || 
+                    (selectedMapping?.standardized_field?.id ? 
+                      selectedMapping.standardized_field.id : '');
+                  
+                  return (
+                    <FormControl fullWidth error={!!error}>
+                      <InputLabel>Standardized Field</InputLabel>
+                      <Select
+                        {...field}
+                        value={currentValue}
+                        onChange={(e) => {
+                          field.onChange(e);
+                        }}
+                        label="Standardized Field"
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
                         </MenuItem>
-                      ))}
-                    </Select>
-                    {error && (
-                      <FormHelperText>{error.message}</FormHelperText>
-                    )}
-                    {selectedMapping?.standardized_field && !field.value && (
-                      <FormHelperText>
-                        Current: {selectedMapping.standardized_field.name}
-                      </FormHelperText>
-                    )}
-                  </FormControl>
-                )}
+                        {standardizedFields.map((stdField) => (
+                          <MenuItem key={stdField.id} value={stdField.id}>
+                            {stdField.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {error && (
+                        <FormHelperText>{error.message}</FormHelperText>
+                      )}
+                    </FormControl>
+                  );
+                }}
               />
             </Stack>
           </Box>
