@@ -84,6 +84,7 @@ export default function FieldMappingPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedMapping, setSelectedMapping] = useState<FieldMapping | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -322,6 +323,21 @@ export default function FieldMappingPage() {
                 </Button>
               </Box>
 
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search PDF Field Name or Standardized Field..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+                    ),
+                  }}
+                  size="small"
+                />
+              </Box>
+
               {loading ? (
                 <Box display="flex" justifyContent="center" p={3}>
                   <CircularProgress />
@@ -339,6 +355,11 @@ export default function FieldMappingPage() {
                     </TableHead>
                     <TableBody>
                       {fieldMappings
+                        .filter(mapping => {
+                          const searchLower = searchQuery.toLowerCase();
+                          return mapping.pdf_field_name.toLowerCase().includes(searchLower) ||
+                                 (mapping.standardized_field?.name || '').toLowerCase().includes(searchLower);
+                        })
                         .sort((a, b) => a.pdf_field_name.toLowerCase().localeCompare(b.pdf_field_name.toLowerCase()))
                         .map((mapping) => (
                         <TableRow key={mapping.id}>
