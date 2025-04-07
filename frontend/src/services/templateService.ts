@@ -192,7 +192,7 @@ export class TemplateService {
   }
 
   async checkTemplateDeletable(templateId: string): Promise<{ deletable: boolean }> {
-    const response = await api.get(`/forms/templates/${templateId}/check-deletable`);
+    const response = await api.get(`/forms/templates/${templateId}/check_deletable/`);
     return response.data;
   }
 
