@@ -332,21 +332,23 @@ export default function FieldMappingPage() {
                     <TableHead>
                       <TableRow>
                         <TableCell>PDF Field Name</TableCell>
-                        <TableCell>System Field Name</TableCell>
                         <TableCell>Standardized Field</TableCell>
-                        <TableCell>Validation Rules</TableCell>
+                        <TableCell>Field Type</TableCell>
                         <TableCell>Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {fieldMappings.map((mapping) => (
+                      {fieldMappings
+                        .sort((a, b) => a.pdf_field_name.toLowerCase().localeCompare(b.pdf_field_name.toLowerCase()))
+                        .map((mapping) => (
                         <TableRow key={mapping.id}>
                           <TableCell>{mapping.pdf_field_name}</TableCell>
-                          <TableCell>{mapping.system_field_name || '-'}</TableCell>
                           <TableCell>
                             {mapping.standardized_field?.name || '-'}
                           </TableCell>
-                          <TableCell>{mapping.validation_rules || '-'}</TableCell>
+                          <TableCell>
+                            {mapping.standardized_field?.field_type || '-'}
+                          </TableCell>
                           <TableCell>
                             <IconButton onClick={() => handleEdit(mapping)} size="small">
                               <EditIcon />
