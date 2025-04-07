@@ -42,7 +42,9 @@ export interface FieldMapping {
   pdf_field_name: string;
   system_field_name: string;
   field_type: string;
-  transformation_rule?: string;
+  transformation_rules?: string;
+  validation_rules?: string;
+  field_definition_override?: string;
   created_at: string;
   updated_at: string;
 }
@@ -51,14 +53,18 @@ export interface CreateFieldMappingData {
   pdf_field_name: string;
   system_field_name: string;
   field_type: string;
-  transformation_rule?: string;
+  transformation_rules?: string;
+  validation_rules?: string;
+  field_definition_override?: string;
 }
 
 export interface UpdateFieldMappingData {
   pdf_field_name?: string;
   system_field_name?: string;
   field_type?: string;
-  transformation_rule?: string;
+  transformation_rules?: string;
+  validation_rules?: string;
+  field_definition_override?: string;
 }
 
 export class TemplateService {
@@ -163,27 +169,27 @@ export class TemplateService {
 
   // Field Mapping Methods
   async getFieldMappings(templateId: string): Promise<FieldMapping[]> {
-    const response = await api.get(`/forms/templates/${templateId}/field-mappings`);
+    const response = await api.get(`/forms/templates/${templateId}/field-mappings/`);
     return response.data;
   }
 
   async getFieldMapping(templateId: string, mappingId: string): Promise<FieldMapping> {
-    const response = await api.get(`/forms/templates/${templateId}/field-mappings/${mappingId}`);
+    const response = await api.get(`/forms/templates/${templateId}/field-mappings/${mappingId}/`);
     return response.data;
   }
 
   async createFieldMapping(templateId: string, data: CreateFieldMappingData): Promise<FieldMapping> {
-    const response = await api.post(`/forms/templates/${templateId}/field-mappings`, data);
+    const response = await api.post(`/forms/templates/${templateId}/field-mappings/`, data);
     return response.data;
   }
 
   async updateFieldMapping(templateId: string, mappingId: string, data: UpdateFieldMappingData): Promise<FieldMapping> {
-    const response = await api.patch(`/forms/templates/${templateId}/field-mappings/${mappingId}`, data);
+    const response = await api.patch(`/forms/templates/${templateId}/field-mappings/${mappingId}/`, data);
     return response.data;
   }
 
   async deleteFieldMapping(templateId: string, mappingId: string): Promise<void> {
-    await api.delete(`/forms/templates/${templateId}/field-mappings/${mappingId}`);
+    await api.delete(`/forms/templates/${templateId}/field-mappings/${mappingId}/`);
   }
 
   async validateFieldMappings(templateId: string): Promise<{ valid: boolean; errors: string[] }> {

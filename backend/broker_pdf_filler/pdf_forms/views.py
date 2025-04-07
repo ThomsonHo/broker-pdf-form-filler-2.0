@@ -139,6 +139,57 @@ class FormTemplateViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="{os.path.basename(template.template_file.name)}"'
         return response
 
+    @action(detail=True, methods=['get'])
+    def field_mappings(self, request, pk=None):
+        """Get field mappings for a template."""
+        template = self.get_object()
+        mappings = template.field_mappings.all()
+        serializer = FormFieldMappingSerializer(mappings, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def add_field_mapping(self, request, pk=None):
+        """Add a field mapping to a template."""
+        template = self.get_object()
+        data = request.data
+        data['template'] = template.id
+        serializer = FormFieldMappingSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['patch'])
+    def update_field_mapping(self, request, pk=None, mapping_id=None):
+        """Update a field mapping."""
+        template = self.get_object()
+        try:
+            mapping = template.field_mappings.get(id=mapping_id)
+        except FormFieldMapping.DoesNotExist:
+            return Response(
+                {'error': 'Field mapping not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = FormFieldMappingSerializer(mapping, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def delete_field_mapping(self, request, pk=None, mapping_id=None):
+        """Delete a field mapping."""
+        template = self.get_object()
+        try:
+            mapping = template.field_mappings.get(id=mapping_id)
+            mapping.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except FormFieldMapping.DoesNotExist:
+            return Response(
+                {'error': 'Field mapping not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 class FormSetViewSet(viewsets.ModelViewSet):
     queryset = FormSet.objects.all()
     serializer_class = FormSetSerializer
@@ -242,7 +293,6 @@ class StandardizedFieldViewSet(viewsets.ModelViewSet):
         return Response({'rules': validation_rules})
 
 class FormFieldMappingViewSet(viewsets.ModelViewSet):
-    queryset = FormFieldMapping.objects.all()
     serializer_class = FormFieldMappingSerializer
     permission_classes = [IsAdminUser]
     filterset_fields = ['template', 'standardized_field']
@@ -250,11 +300,18 @@ class FormFieldMappingViewSet(viewsets.ModelViewSet):
     ordering_fields = ['pdf_field_name', 'created_at']
     
     def get_queryset(self):
-        queryset = super().get_queryset()
-        template_id = self.request.query_params.get('template_id')
-        if template_id:
-            queryset = queryset.filter(template_id=template_id)
-        return queryset
+        return FormFieldMapping.objects.filter(template_id=self.kwargs['template_pk'])
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    def perform_create(self, serializer):
+        serializer.save(template_id=self.kwargs['template_pk'], created_by=self.request.user)
+    
+    def perform_update(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 class FormGenerationBatchViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for managing form generation batches."""
