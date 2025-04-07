@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 import os
 import zipfile
+import logging
 from django.http import FileResponse
 from django.conf import settings
 from rest_framework import viewsets, status, permissions
@@ -16,6 +17,8 @@ from .serializers import (
 )
 from .services import FormGenerationService, extract_pdf_fields, validate_field_mapping
 from .permissions import IsAdminUser, IsBrokerUser
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 
@@ -156,6 +159,25 @@ class StandardizedFieldViewSet(viewsets.ModelViewSet):
     filterset_fields = ['field_type', 'field_category', 'is_required']
     search_fields = ['name', 'description', 'field_definition']
     ordering_fields = ['name', 'field_category', 'created_at']
+    
+    def get_queryset(self):
+        try:
+            queryset = StandardizedField.objects.all()
+            logger.info(f"Retrieved {queryset.count()} standardized fields")
+            return queryset
+        except Exception as e:
+            logger.error(f"Error retrieving standardized fields: {str(e)}")
+            raise
+
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in list method: {str(e)}")
+            return Response(
+                {"error": "Internal server error", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

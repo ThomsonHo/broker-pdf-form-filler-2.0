@@ -1,47 +1,18 @@
 import { api } from './api';
+import { StandardizedField, StandardizedFieldCategory, CreateStandardizedFieldData, UpdateStandardizedFieldData } from '../types/standardizedField';
 
-export interface StandardizedField {
-  id: string;
-  name: string;
-  label: string;
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
+
+export interface ValidationRule {
   type: string;
-  required: boolean;
-  validation?: {
-    type?: string;
-    message?: string;
-    value?: any;
-  };
-  relationships?: {
-    type?: string;
-    targetField?: string;
-    condition?: {
-      field?: string;
-      operator?: string;
-      value?: any;
-    };
-  };
-  field_type: string;
-  field_category: string;
-  validation_rules: string;
-  is_required: boolean;
-  field_definition: string;
-  llm_guide: string;
-  category?: {
-    id: string;
-    name: string;
-  };
-  metadata: Record<string, any>;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
+  value: string;
+  message: string;
 }
 
-export interface StandardizedFieldCategory {
-  id: string;
-  name: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
+export interface RelationshipRule {
+  type: string;
+  target_field: string;
+  condition: Record<string, any>;
 }
 
 export interface StandardizedFieldsResponse {
@@ -49,54 +20,48 @@ export interface StandardizedFieldsResponse {
   count: number;
 }
 
-export interface CreateStandardizedFieldData {
-  name: string;
-  description?: string;
-  field_type: string;
-  field_category: string;
-  validation_rules?: string;
-  is_required?: boolean;
-  field_definition: string;
-  llm_guide?: string;
-  category?: string;
-  metadata?: Record<string, any>;
+export interface IStandardizedFieldService {
+  getFields(): Promise<StandardizedField[]>;
+  getField(id: string): Promise<StandardizedField>;
+  createField(data: CreateStandardizedFieldData): Promise<StandardizedField>;
+  updateField(id: string, data: UpdateStandardizedFieldData): Promise<StandardizedField>;
+  deleteField(id: string): Promise<void>;
+  getStandardizedFieldCategories(): Promise<StandardizedFieldCategory[]>;
 }
 
-export interface UpdateStandardizedFieldData {
-  name?: string;
-  description?: string;
-  field_type?: string;
-  field_category?: string;
-  validation_rules?: string;
-  is_required?: boolean;
-  field_definition?: string;
-  llm_guide?: string;
-  category?: string;
-  metadata?: Record<string, any>;
-}
+export class StandardizedFieldService implements IStandardizedFieldService {
+  private baseUrl: string;
 
-class StandardizedFieldService {
-  async getStandardizedFields(): Promise<StandardizedField[]> {
-    const response = await api.get('/forms/standardized-fields/');
-    return response.data.results || [];
+  constructor() {
+    this.baseUrl = `${API_URL}/forms/`;
   }
 
-  async createStandardizedField(field: CreateStandardizedFieldData): Promise<StandardizedField> {
-    const response = await api.post('/forms/standardized-fields/', field);
+  async getFields(): Promise<StandardizedField[]> {
+    const response = await api.get(`${this.baseUrl}standardized-fields/`);
+    return response.data.results;
+  }
+
+  async getField(id: string): Promise<StandardizedField> {
+    const response = await api.get(`${this.baseUrl}standardized-fields/${id}/`);
     return response.data;
   }
 
-  async updateStandardizedField(id: string, field: UpdateStandardizedFieldData): Promise<StandardizedField> {
-    const response = await api.patch(`/forms/standardized-fields/${id}/`, field);
+  async createField(data: CreateStandardizedFieldData): Promise<StandardizedField> {
+    const response = await api.post(`${this.baseUrl}standardized-fields/`, data);
     return response.data;
   }
 
-  async deleteStandardizedField(id: string): Promise<void> {
-    await api.delete(`/forms/standardized-fields/${id}/`);
+  async updateField(id: string, data: UpdateStandardizedFieldData): Promise<StandardizedField> {
+    const response = await api.put(`${this.baseUrl}standardized-fields/${id}/`, data);
+    return response.data;
+  }
+
+  async deleteField(id: string): Promise<void> {
+    await api.delete(`${this.baseUrl}standardized-fields/${id}/`);
   }
 
   async generateFieldDefinition(name: string, fieldType: string): Promise<string> {
-    const response = await api.post('/forms/standardized-fields/generate_definition/', {
+    const response = await api.post(`${this.baseUrl}standardized-fields/generate_definition/`, {
       name,
       field_type: fieldType,
     });
@@ -104,7 +69,7 @@ class StandardizedFieldService {
   }
 
   async generateLLMGuide(name: string, fieldType: string, fieldDefinition: string): Promise<string> {
-    const response = await api.post('/forms/standardized-fields/generate_llm_guide/', {
+    const response = await api.post(`${this.baseUrl}standardized-fields/generate_llm_guide/`, {
       name,
       field_type: fieldType,
       field_definition: fieldDefinition,
@@ -113,7 +78,7 @@ class StandardizedFieldService {
   }
 
   async suggestValidationRules(name: string, fieldType: string): Promise<string> {
-    const response = await api.post('/forms/standardized-fields/suggest_validation_rules/', {
+    const response = await api.post(`${this.baseUrl}standardized-fields/suggest_validation_rules/`, {
       name,
       field_type: fieldType,
     });
@@ -122,22 +87,22 @@ class StandardizedFieldService {
 
   // Standardized Field Category methods
   async getStandardizedFieldCategories(): Promise<StandardizedFieldCategory[]> {
-    const response = await api.get('/forms/standardized-field-categories/');
-    return response.data.results || [];
+    const response = await api.get(`${this.baseUrl}standardized-field-categories/`);
+    return response.data.results;
   }
 
   async createStandardizedFieldCategory(category: { name: string; description?: string }): Promise<StandardizedFieldCategory> {
-    const response = await api.post('/forms/standardized-field-categories/', category);
+    const response = await api.post(`${this.baseUrl}standardized-field-categories/`, category);
     return response.data;
   }
 
   async updateStandardizedFieldCategory(id: string, category: { name?: string; description?: string }): Promise<StandardizedFieldCategory> {
-    const response = await api.patch(`/forms/standardized-field-categories/${id}/`, category);
+    const response = await api.patch(`${this.baseUrl}standardized-field-categories/${id}/`, category);
     return response.data;
   }
 
   async deleteStandardizedFieldCategory(id: string): Promise<void> {
-    await api.delete(`/forms/standardized-field-categories/${id}/`);
+    await api.delete(`${this.baseUrl}standardized-field-categories/${id}/`);
   }
 }
 

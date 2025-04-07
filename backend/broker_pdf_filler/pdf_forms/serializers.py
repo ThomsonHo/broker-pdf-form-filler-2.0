@@ -9,40 +9,66 @@ class StandardizedFieldCategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class StandardizedFieldSerializer(serializers.ModelSerializer):
-    validation = serializers.JSONField(required=False, allow_null=True)
-    relationships = serializers.JSONField(required=False, allow_null=True)
-    category = StandardizedFieldCategorySerializer(read_only=True)
-    category_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
-    
     class Meta:
         model = StandardizedField
         fields = [
-            'id', 'name', 'label', 'type', 'required', 'validation', 'relationships',
-            'description', 'field_type', 'field_category', 'validation_rules', 
-            'is_required', 'field_definition', 'llm_guide', 'metadata', 
-            'created_by', 'created_at', 'updated_at', 'category', 'category_id'
+            'id', 'created_at', 'updated_at', 'created_by', 'updated_by',
+            'name', 'label', 'llm_guide', 'is_required', 'field_category',
+            'display_category', 'field_type', 'field_definition', 'has_validation',
+            'validation_rules', 'has_relationship', 'relationship_rules',
+            'options', 'default_value', 'placeholder', 'help_text',
+            'is_active', 'is_system', 'metadata'
         ]
-        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'updated_by']
+
+    def validate(self, data):
+        # Required fields validation
+        required_fields = ['name', 'label', 'field_category', 'display_category', 'field_type']
+        for field in required_fields:
+            if field not in data:
+                raise serializers.ValidationError({field: "This field is required."})
+
+        # Set default values if not provided
+        if 'field_type' not in data:
+            data['field_type'] = 'text'
+        if 'field_category' not in data:
+            data['field_category'] = 'client'
+        if 'display_category' not in data:
+            data['display_category'] = 'Client Information'
+
+        return data
 
     def validate_validation_rules(self, value):
-        # Accept either a string or a list
-        if value is not None and not isinstance(value, (str, list)):
-            raise serializers.ValidationError("Validation rules must be a string or a list")
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Validation rules must be a list")
+        for rule in value:
+            if not isinstance(rule, dict):
+                raise serializers.ValidationError("Each validation rule must be a dictionary")
+            if 'type' not in rule:
+                raise serializers.ValidationError("Each validation rule must have a type")
+            if 'value' not in rule:
+                raise serializers.ValidationError("Each validation rule must have a value")
+            if 'message' not in rule:
+                raise serializers.ValidationError("Each validation rule must have a message")
         return value
     
-    def validate_metadata(self, value):
-        if not isinstance(value, dict):
-            raise serializers.ValidationError("Metadata must be a dictionary")
-        return value
-        
-    def validate_validation(self, value):
-        if value is not None and not isinstance(value, dict):
-            raise serializers.ValidationError("Validation must be a dictionary")
-        return value
-        
-    def validate_relationships(self, value):
-        if value is not None and not isinstance(value, dict):
-            raise serializers.ValidationError("Relationships must be a dictionary")
+    def validate_relationship_rules(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Relationship rules must be a list")
+        for rule in value:
+            if not isinstance(rule, dict):
+                raise serializers.ValidationError("Each relationship rule must be a dictionary")
+            if 'type' in rule and not isinstance(rule['type'], str):
+                raise serializers.ValidationError("Relationship rule type must be a string")
+            if 'target_field' in rule and not isinstance(rule['target_field'], str):
+                raise serializers.ValidationError("Relationship rule target_field must be a string")
+            if 'condition' in rule:
+                if not isinstance(rule['condition'], dict):
+                    raise serializers.ValidationError("Relationship rule condition must be a dictionary")
+                if 'field' in rule['condition'] and not isinstance(rule['condition']['field'], str):
+                    raise serializers.ValidationError("Relationship rule condition field must be a string")
+                if 'operator' in rule['condition'] and not isinstance(rule['condition']['operator'], str):
+                    raise serializers.ValidationError("Relationship rule condition operator must be a string")
         return value
 
 class FormFieldMappingSerializer(serializers.ModelSerializer):

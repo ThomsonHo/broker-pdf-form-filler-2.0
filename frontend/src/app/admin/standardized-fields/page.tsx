@@ -29,211 +29,231 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-} from '@mui/icons-material';
-import * as yup from 'yup';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { standardizedFieldService, StandardizedField } from '@/services/standardizedFieldService';
-
-const fieldSchema = yup.object().shape({
-  name: yup.string().required('Field name is required'),
-  label: yup.string().required('Display label is required'),
-  type: yup.string().required('Field type is required'),
-  required: yup.boolean().default(false),
-  validation: yup.object().shape({
-    type: yup.string().optional(),
-    message: yup.string().optional(),
-    value: yup.mixed().optional(),
-  }).optional(),
-  relationships: yup.object().shape({
-    type: yup.string().optional(),
-    targetField: yup.string().optional(),
-    condition: yup.object().shape({
-      field: yup.string().optional(),
-      operator: yup.string().optional(),
-      value: yup.mixed().optional(),
-    }).optional(),
-  }).optional(),
-});
-
-type FieldFormData = yup.InferType<typeof fieldSchema>;
+import { standardizedFieldService, StandardizedField, CreateStandardizedFieldData, UpdateStandardizedFieldData, ValidationRule, RelationshipRule, StandardizedFieldCategory } from '@/services/standardizedFieldService';
+import { Add, Delete, Edit } from '@mui/icons-material';
+import * as yup from 'yup';
 
 const FIELD_TYPES = [
-  'text',
-  'number',
-  'date',
-  'select',
-  'multiselect',
-  'checkbox',
-  'radio',
-  'file',
-  'textarea',
-  'email',
-  'phone',
-  'address',
-  'currency',
-  'percentage',
-  'url',
-  'password',
-  'time',
-  'datetime',
-  'color',
-  'range',
-  'tel',
-  'search',
-  'week',
-  'month',
-  'datetime-local',
+  { value: 'text', label: 'Text' },
+  { value: 'number', label: 'Number' },
+  { value: 'date', label: 'Date' },
+  { value: 'select', label: 'Select' },
+  { value: 'checkbox', label: 'Checkbox' },
+  { value: 'radio', label: 'Radio' },
+  { value: 'textarea', label: 'Text Area' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'ssn', label: 'SSN' },
+  { value: 'address', label: 'Address' },
+  { value: 'signature', label: 'Signature' },
 ] as const;
+
+const FIELD_CATEGORIES = [
+  { value: 'client', label: 'Client' },
+  { value: 'user', label: 'User' },
+  { value: 'broker', label: 'Broker' },
+] as const;
+
+const VALIDATION_TYPES = [
+  'length',
+  'pattern',
+  'min',
+  'max',
+  'email',
+  'url',
+  'phone',
+  'custom'
+] as const;
+
+const RELATIONSHIP_TYPES = [
+  'dependency',
+  'visibility',
+  'calculation'
+] as const;
+
+const CONDITION_OPERATORS = [
+  'equals',
+  'not_equals',
+  'contains',
+  'greater_than',
+  'less_than',
+  'in',
+  'not_in'
+] as const;
+
+const validationRuleSchema = yup.object().shape({
+  type: yup.string().required('Validation type is required'),
+  value: yup.mixed().required('Validation value is required'),
+  message: yup.string().required('Validation message is required')
+});
+
+const relationshipRuleSchema = yup.object().shape({
+  type: yup.string().optional(),
+  target_field: yup.string().optional(),
+  condition: yup.object().shape({
+    field: yup.string().optional(),
+    operator: yup.string().optional(),
+    value: yup.mixed().optional()
+  }).optional()
+});
+
+const validationSchema = yup.object().shape({
+  name: yup.string().required('Name is required'),
+  label: yup.string().required('Label is required'),
+  llm_guide: yup.string().nullable(),
+  is_required: yup.boolean(),
+  field_category: yup.string().required('Field category is required'),
+  display_category: yup.string().required('Display category is required'),
+  field_type: yup.string().required('Field type is required'),
+  field_definition: yup.string().nullable(),
+  has_validation: yup.boolean(),
+  validation_rules: yup.array(),
+  has_relationship: yup.boolean(),
+  relationship_rules: yup.array(),
+  options: yup.object().default({}),
+  default_value: yup.string().nullable(),
+  placeholder: yup.string().nullable(),
+  help_text: yup.string().nullable(),
+  is_active: yup.boolean(),
+  is_system: yup.boolean(),
+  metadata: yup.object().default({}),
+});
+
+type FieldFormData = Omit<CreateStandardizedFieldData, 'options' | 'metadata'> & {
+  options: Record<string, any>;
+  metadata: Record<string, any>;
+};
+
+const defaultValues: FieldFormData = {
+  name: '',
+  label: '',
+  llm_guide: '',
+  is_required: false,
+  field_category: FIELD_CATEGORIES[0].value,
+  display_category: FIELD_CATEGORIES[0].label,
+  field_type: FIELD_TYPES[0].value,
+  field_definition: '',
+  has_validation: false,
+  validation_rules: [],
+  has_relationship: false,
+  relationship_rules: [],
+  options: {},
+  default_value: '',
+  placeholder: '',
+  help_text: '',
+  is_active: true,
+  is_system: false,
+  metadata: {},
+};
 
 export default function StandardizedFieldsPage() {
   const [fields, setFields] = useState<StandardizedField[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [totalCount, setTotalCount] = useState(0);
+  const [categories, setCategories] = useState<StandardizedFieldCategory[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedField, setSelectedField] = useState<StandardizedField | null>(null);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info' | 'warning';
-  }>({
+  const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'info',
+    severity: 'success' as 'success' | 'error'
   });
-  const [showValidation, setShowValidation] = useState(false);
-  const [showRelationships, setShowRelationships] = useState(false);
-  const [showCondition, setShowCondition] = useState(false);
 
   const {
     register,
-    handleSubmit,
-    formState: { errors },
+    handleSubmit: formHandleSubmit,
     reset,
-    setValue,
     watch,
+    formState: { errors },
+    control,
   } = useForm<FieldFormData>({
-    resolver: yupResolver(fieldSchema),
-    defaultValues: {
-      required: false,
-    }
+    resolver: yupResolver(validationSchema),
+    defaultValues,
   });
 
-  useEffect(() => {
-    fetchFields();
-  }, [page, rowsPerPage]);
+  const { fields: validationFields, append, remove } = useFieldArray({
+    control,
+    name: 'validation_rules',
+  });
 
-  const fetchFields = async () => {
-    try {
-      setLoading(true);
-      const fields = await standardizedFieldService.getStandardizedFields();
-      // Handle pagination on the client side
-      const startIndex = page * rowsPerPage;
-      const endIndex = startIndex + rowsPerPage;
-      setFields(fields.slice(startIndex, endIndex));
-      setTotalCount(fields.length);
-    } catch (error) {
-      console.error('Error fetching fields:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error fetching fields',
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
+  const { fields: relationshipFields, append: appendRelationship, remove: removeRelationship } = useFieldArray({
+    control,
+    name: 'relationship_rules',
+  });
+
+  const handleEdit = (field: StandardizedField) => {
+    setSelectedField(field);
+    reset({
+      name: field.name,
+      label: field.label,
+      llm_guide: field.llm_guide || '',
+      is_required: field.is_required,
+      field_category: field.field_category,
+      display_category: field.display_category,
+      field_type: field.field_type,
+      field_definition: field.field_definition || '',
+      has_validation: field.has_validation,
+      validation_rules: field.validation_rules,
+      has_relationship: field.has_relationship,
+      relationship_rules: field.relationship_rules,
+      options: field.options || {},
+      default_value: field.default_value || '',
+      placeholder: field.placeholder || '',
+      help_text: field.help_text || '',
+      is_active: field.is_active,
+      is_system: field.is_system,
+      metadata: field.metadata || {},
+    });
+    setOpenDialog(true);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleOpenDialog = (field?: StandardizedField) => {
-    if (field) {
-      setSelectedField(field);
-      reset({
-        name: field.name,
-        label: field.label,
-        type: field.type,
-        required: field.required,
-        validation: field.validation || undefined,
-        relationships: field.relationships || undefined,
-      });
-      setShowValidation(!!field.validation);
-      setShowRelationships(!!field.relationships);
-      setShowCondition(!!field.relationships?.condition);
-    } else {
-      setSelectedField(null);
-      reset({
-        name: '',
-        label: '',
-        type: 'text',
-        required: false,
-      });
-      setShowValidation(false);
-      setShowRelationships(false);
-      setShowCondition(false);
-    }
+  const handleCreate = () => {
+    setSelectedField(null);
+    reset(defaultValues);
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedField(null);
-    reset({});
-    setShowValidation(false);
-    setShowRelationships(false);
-    setShowCondition(false);
   };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  const loadFields = async () => {
+    try {
+      const [fieldsData, categoriesData] = await Promise.all([
+        standardizedFieldService.getFields(),
+        standardizedFieldService.getStandardizedFieldCategories()
+      ]);
+      setFields(fieldsData);
+      setCategories(categoriesData);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Failed to load fields',
+        severity: 'error',
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadFields();
+  }, []);
 
   const onSubmit = async (data: FieldFormData) => {
     try {
-      // Clean up the data by removing empty validation and relationships
-      const cleanedData = {
-        ...data,
-        validation: showValidation ? data.validation : undefined,
-        relationships: showRelationships ? {
-          ...data.relationships,
-          condition: showCondition ? data.relationships?.condition : undefined,
-        } : undefined,
-      };
-
       if (selectedField) {
-        await standardizedFieldService.updateStandardizedField(selectedField.id, {
-          name: cleanedData.name,
-          field_type: cleanedData.type,
-          field_category: 'client',
-          is_required: cleanedData.required,
-          field_definition: cleanedData.label,
-          validation_rules: cleanedData.validation ? JSON.stringify(cleanedData.validation) : '',
-          llm_guide: cleanedData.relationships ? JSON.stringify(cleanedData.relationships) : '',
-        });
+        await standardizedFieldService.updateField(selectedField.id, data);
         setSnackbar({
           open: true,
           message: 'Field updated successfully',
           severity: 'success',
         });
       } else {
-        await standardizedFieldService.createStandardizedField({
-          name: cleanedData.name,
-          field_type: cleanedData.type,
-          field_category: 'client',
-          is_required: cleanedData.required,
-          field_definition: cleanedData.label,
-          validation_rules: cleanedData.validation ? JSON.stringify(cleanedData.validation) : '',
-          llm_guide: cleanedData.relationships ? JSON.stringify(cleanedData.relationships) : '',
-        });
+        await standardizedFieldService.createField(data);
         setSnackbar({
           open: true,
           message: 'Field created successfully',
@@ -241,49 +261,15 @@ export default function StandardizedFieldsPage() {
         });
       }
       handleCloseDialog();
-      fetchFields();
+      loadFields();
     } catch (error) {
-      console.error('Error saving field:', error);
       setSnackbar({
         open: true,
-        message: 'Error saving field',
+        message: error instanceof Error ? error.message : 'An error occurred',
         severity: 'error',
       });
     }
   };
-
-  const handleDeleteField = async (fieldId: string) => {
-    if (window.confirm('Are you sure you want to delete this field?')) {
-      try {
-        await standardizedFieldService.deleteStandardizedField(fieldId);
-        setSnackbar({
-          open: true,
-          message: 'Field deleted successfully',
-          severity: 'success',
-        });
-        fetchFields();
-      } catch (error) {
-        console.error('Error deleting field:', error);
-        setSnackbar({
-          open: true,
-          message: 'Error deleting field',
-          severity: 'error',
-        });
-      }
-    }
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" p={3}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box>
@@ -291,8 +277,8 @@ export default function StandardizedFieldsPage() {
         <Typography variant="h4">Standardized Fields</Typography>
         <Button
           variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
+          startIcon={<Add />}
+          onClick={handleCreate}
         >
           Add Field
         </Button>
@@ -305,8 +291,8 @@ export default function StandardizedFieldsPage() {
               <TableCell>Name</TableCell>
               <TableCell>Label</TableCell>
               <TableCell>Type</TableCell>
+              <TableCell>Category</TableCell>
               <TableCell>Required</TableCell>
-              <TableCell>Validation</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -315,254 +301,244 @@ export default function StandardizedFieldsPage() {
               <TableRow key={field.id}>
                 <TableCell>{field.name}</TableCell>
                 <TableCell>{field.label}</TableCell>
-                <TableCell>{field.type}</TableCell>
-                <TableCell>{field.required ? 'Yes' : 'No'}</TableCell>
-                <TableCell>
-                  {field.validation ? (
-                    <Typography variant="body2">
-                      {field.validation.type}
-                      {field.validation.message && `: ${field.validation.message}`}
-                    </Typography>
-                  ) : (
-                    '-'
-                  )}
-                </TableCell>
+                <TableCell>{field.field_type}</TableCell>
+                <TableCell>{field.field_category}</TableCell>
+                <TableCell>{field.is_required ? 'Yes' : 'No'}</TableCell>
                 <TableCell>
                   <IconButton
-                    onClick={() => handleOpenDialog(field)}
+                    onClick={() => handleEdit(field)}
                     size="small"
                   >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    onClick={() => handleDeleteField(field.id)}
-                    size="small"
-                  >
-                    <DeleteIcon />
+                    <Edit />
                   </IconButton>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={totalCount}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
       </TableContainer>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{selectedField ? 'Edit Field' : 'Add Field'}</DialogTitle>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogTitle>
+          {selectedField ? 'Edit Field' : 'Add Field'}
+        </DialogTitle>
+        <form onSubmit={formHandleSubmit(onSubmit)}>
           <DialogContent>
-            <Box display="grid" gap={2}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Required fields */}
               <TextField
-                label="Field Name"
                 {...register('name')}
+                label="Name *"
                 error={!!errors.name}
                 helperText={errors.name?.message}
                 fullWidth
               />
               <TextField
-                label="Display Label"
                 {...register('label')}
+                label="Label *"
                 error={!!errors.label}
                 helperText={errors.label?.message}
                 fullWidth
               />
-              <FormControl fullWidth error={!!errors.type}>
-                <InputLabel>Field Type</InputLabel>
+              <TextField
+                {...register('llm_guide')}
+                label="LLM Guide"
+                multiline
+                rows={3}
+                fullWidth
+              />
+              <FormControlLabel
+                control={<Switch {...register('is_required')} />}
+                label="Required"
+              />
+              <FormControl fullWidth>
+                <InputLabel>Field Category *</InputLabel>
                 <Select
-                  label="Field Type"
-                  value={watch('type')}
-                  onChange={(e) => setValue('type', e.target.value)}
+                  {...register('field_category')}
+                  label="Field Category *"
+                  error={!!errors.field_category}
                 >
-                  {FIELD_TYPES.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                  {FIELD_CATEGORIES.map((category) => (
+                    <MenuItem key={category.value} value={category.value}>
+                      {category.label}
                     </MenuItem>
                   ))}
                 </Select>
-                {errors.type && (
-                  <Typography color="error" variant="caption">
-                    {String(errors.type)}
-                  </Typography>
-                )}
               </FormControl>
-              <FormControlLabel
-                control={
-                  <Switch
-                    {...register('required')}
-                    checked={watch('required')}
-                  />
-                }
-                label="Required Field"
+              <FormControl fullWidth>
+                <InputLabel>Display Category *</InputLabel>
+                <Select
+                  {...register('display_category')}
+                  label="Display Category *"
+                  error={!!errors.display_category}
+                >
+                  {categories.map((category) => (
+                    <MenuItem key={category.id} value={category.name}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Field Type *</InputLabel>
+                <Select
+                  {...register('field_type')}
+                  label="Field Type *"
+                  error={!!errors.field_type}
+                >
+                  {FIELD_TYPES.map((type) => (
+                    <MenuItem key={type.value} value={type.value}>
+                      {type.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* Optional fields - hidden field_definition */}
+              <TextField
+                {...register('field_definition')}
+                label="Field Definition"
+                multiline
+                rows={3}
+                fullWidth
+                sx={{ display: 'none' }}
               />
-              
-              {/* Validation Section */}
-              <Box>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={showValidation}
-                      onChange={(e) => setShowValidation(e.target.checked)}
-                    />
-                  }
-                  label="Add Validation"
-                />
-                
-                {showValidation && (
-                  <Box display="grid" gap={2} sx={{ pl: 2, mt: 1 }}>
-                    <FormControl fullWidth error={!!errors.validation?.type}>
-                      <InputLabel>Validation Type</InputLabel>
-                      <Select
-                        label="Validation Type"
-                        value={watch('validation.type') || ''}
-                        onChange={(e) => setValue('validation.type', e.target.value)}
-                      >
-                        <MenuItem value="min">Minimum</MenuItem>
-                        <MenuItem value="max">Maximum</MenuItem>
-                        <MenuItem value="minLength">Minimum Length</MenuItem>
-                        <MenuItem value="maxLength">Maximum Length</MenuItem>
-                        <MenuItem value="pattern">Pattern</MenuItem>
-                        <MenuItem value="email">Email</MenuItem>
-                        <MenuItem value="url">URL</MenuItem>
-                        <MenuItem value="phone">Phone</MenuItem>
-                        <MenuItem value="custom">Custom</MenuItem>
-                      </Select>
-                      {errors.validation?.type && (
-                        <Typography color="error" variant="caption">
-                          {String(errors.validation.type)}
-                        </Typography>
-                      )}
-                    </FormControl>
-                    <TextField
-                      label="Validation Message"
-                      {...register('validation.message')}
-                      error={!!errors.validation?.message}
-                      helperText=""
-                      fullWidth
-                    />
-                    <TextField
-                      label="Validation Value"
-                      {...register('validation.value')}
-                      error={!!errors.validation?.value}
-                      helperText=""
-                      fullWidth
-                    />
-                  </Box>
-                )}
-              </Box>
-              
-              {/* Relationships Section */}
-              <Box>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={showRelationships}
-                      onChange={(e) => {
-                        setShowRelationships(e.target.checked);
-                        if (!e.target.checked) {
-                          setShowCondition(false);
-                        }
-                      }}
-                    />
-                  }
-                  label="Add Relationships"
-                />
-                
-                {showRelationships && (
-                  <Box display="grid" gap={2} sx={{ pl: 2, mt: 1 }}>
-                    <FormControl fullWidth error={!!errors.relationships?.type}>
-                      <InputLabel>Relationship Type</InputLabel>
-                      <Select
-                        label="Relationship Type"
-                        value={watch('relationships.type') || ''}
-                        onChange={(e) => setValue('relationships.type', e.target.value)}
-                      >
-                        <MenuItem value="dependency">Dependency</MenuItem>
-                        <MenuItem value="visibility">Visibility</MenuItem>
-                        <MenuItem value="calculation">Calculation</MenuItem>
-                      </Select>
-                      {errors.relationships?.type && (
-                        <Typography color="error" variant="caption">
-                          {String(errors.relationships.type)}
-                        </Typography>
-                      )}
-                    </FormControl>
-                    <TextField
-                      label="Target Field"
-                      {...register('relationships.targetField')}
-                      error={!!errors.relationships?.targetField}
-                      helperText=""
-                      fullWidth
-                    />
-                    
-                    {/* Condition Section */}
-                    <Box>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={showCondition}
-                            onChange={(e) => setShowCondition(e.target.checked)}
-                          />
-                        }
-                        label="Add Condition"
+
+              {/* Rest of the optional fields */}
+              <FormControlLabel
+                control={<Switch {...register('has_validation')} />}
+                label="Has Validation"
+              />
+              {watch('has_validation') && (
+                <Box>
+                  {validationFields.map((field, index) => (
+                    <Box key={field.id} mb={2} p={2} border="1px solid" borderRadius={1}>
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="subtitle1">Validation Rule {index + 1}</Typography>
+                        <IconButton onClick={() => remove(index)} size="small">
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                      <FormControl fullWidth>
+                        <InputLabel>Validation Type</InputLabel>
+                        <Select
+                          {...register(`validation_rules.${index}.type`)}
+                          error={!!errors.validation_rules?.[index]?.type}
+                        >
+                          {VALIDATION_TYPES.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        fullWidth
+                        label="Validation Value"
+                        {...register(`validation_rules.${index}.value`)}
+                        error={!!errors.validation_rules?.[index]?.value}
+                        sx={{ mt: 1 }}
                       />
-                      
-                      {showCondition && (
-                        <Box display="grid" gap={2} sx={{ pl: 2, mt: 1 }}>
-                          <TextField
-                            label="Condition Field"
-                            {...register('relationships.condition.field')}
-                            error={!!errors.relationships?.condition?.field}
-                            helperText=""
-                            fullWidth
-                          />
-                          <FormControl fullWidth error={!!errors.relationships?.condition?.operator}>
-                            <InputLabel>Condition Operator</InputLabel>
-                            <Select
-                              label="Condition Operator"
-                              value={watch('relationships.condition.operator') || ''}
-                              onChange={(e) => setValue('relationships.condition.operator', e.target.value)}
-                            >
-                              <MenuItem value="equals">Equals</MenuItem>
-                              <MenuItem value="notEquals">Not Equals</MenuItem>
-                              <MenuItem value="contains">Contains</MenuItem>
-                              <MenuItem value="greaterThan">Greater Than</MenuItem>
-                              <MenuItem value="lessThan">Less Than</MenuItem>
-                              <MenuItem value="in">In</MenuItem>
-                              <MenuItem value="notIn">Not In</MenuItem>
-                            </Select>
-                            {errors.relationships?.condition?.operator && (
-                              <Typography color="error" variant="caption">
-                                {String(errors.relationships.condition.operator)}
-                              </Typography>
-                            )}
-                          </FormControl>
-                          <TextField
-                            label="Condition Value"
-                            {...register('relationships.condition.value')}
-                            error={!!errors.relationships?.condition?.value}
-                            helperText=""
-                            fullWidth
-                          />
-                        </Box>
-                      )}
+                      <TextField
+                        fullWidth
+                        label="Validation Message"
+                        {...register(`validation_rules.${index}.message`)}
+                        error={!!errors.validation_rules?.[index]?.message}
+                        sx={{ mt: 1 }}
+                      />
                     </Box>
-                  </Box>
-                )}
-              </Box>
+                  ))}
+                  <Button
+                    variant="outlined"
+                    onClick={() => append({ type: '', value: '', message: '' })}
+                    startIcon={<Add />}
+                    sx={{ mt: 1 }}
+                  >
+                    Add Validation Rule
+                  </Button>
+                </Box>
+              )}
+              <FormControlLabel
+                control={<Switch {...register('has_relationship')} />}
+                label="Has Relationship"
+              />
+              {watch('has_relationship') && (
+                <Box>
+                  {relationshipFields.map((field, index) => (
+                    <Box key={field.id} mb={2} p={2} border="1px solid" borderRadius={1}>
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="subtitle1">Relationship Rule {index + 1}</Typography>
+                        <IconButton onClick={() => removeRelationship(index)} size="small">
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                      <FormControl fullWidth>
+                        <InputLabel>Relationship Type</InputLabel>
+                        <Select
+                          {...register(`relationship_rules.${index}.type`)}
+                          error={!!errors.relationship_rules?.[index]?.type}
+                        >
+                          {RELATIONSHIP_TYPES.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        fullWidth
+                        label="Target Field"
+                        {...register(`relationship_rules.${index}.target_field`)}
+                        error={!!errors.relationship_rules?.[index]?.target_field}
+                        sx={{ mt: 1 }}
+                      />
+                      <Box mt={2}>
+                        <Typography variant="subtitle2">Condition (Optional)</Typography>
+                        <TextField
+                          fullWidth
+                          label="Field"
+                          {...register(`relationship_rules.${index}.condition.field`)}
+                          error={!!errors.relationship_rules?.[index]?.condition?.field}
+                          sx={{ mt: 1 }}
+                        />
+                        <FormControl fullWidth sx={{ mt: 1 }}>
+                          <InputLabel>Operator</InputLabel>
+                          <Select
+                            {...register(`relationship_rules.${index}.condition.operator`)}
+                            error={!!errors.relationship_rules?.[index]?.condition?.operator}
+                          >
+                            {CONDITION_OPERATORS.map((operator) => (
+                              <MenuItem key={operator} value={operator}>
+                                {operator.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <TextField
+                          fullWidth
+                          label="Value"
+                          {...register(`relationship_rules.${index}.condition.value`)}
+                          error={!!errors.relationship_rules?.[index]?.condition?.value}
+                          sx={{ mt: 1 }}
+                        />
+                      </Box>
+                    </Box>
+                  ))}
+                  <Button
+                    variant="outlined"
+                    onClick={() => appendRelationship({ type: '', target_field: '', condition: {} })}
+                    startIcon={<Add />}
+                    sx={{ mt: 1 }}
+                  >
+                    Add Relationship Rule
+                  </Button>
+                </Box>
+              )}
             </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">
+            <Button type="submit" variant="contained">
               {selectedField ? 'Update' : 'Create'}
             </Button>
           </DialogActions>
@@ -584,4 +560,4 @@ export default function StandardizedFieldsPage() {
       </Snackbar>
     </Box>
   );
-} 
+}

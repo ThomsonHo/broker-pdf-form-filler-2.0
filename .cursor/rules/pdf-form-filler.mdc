@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Importnat reminder to ALWAYS follow
+- always use the [requirement.md](mdc:requirement/requirement.md) and [coding_workplan.md](mdc:requirement/coding_workplan.md) as your guide
+- maintain a checklist of tasks to complete for the current module in [current_module.md](mdc:requirement/current_module.md) at the start of the module development
+- update the current_module doc before you start working on a file and for tasks / files that are completed
+- always pick up from where you left off and continue to ensure the coding is consistent
+- clear out the current_module doc when the module is completely coded and tested
+- always run the npm build to test for any issues after updating **any** frontend compenents
+- use the latest **STABLE** libraries and framework by pulling from the repositories and not based on memory
+- 
