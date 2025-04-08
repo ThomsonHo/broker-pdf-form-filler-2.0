@@ -153,11 +153,19 @@ export default function StandardizedFieldsPage() {
   const [categories, setCategories] = useState<StandardizedFieldCategory[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedField, setSelectedField] = useState<StandardizedField | null>(null);
-  const [snackbar, setSnackbar] = useState({
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
     open: false,
     message: '',
-    severity: 'success' as 'success' | 'error'
+    severity: 'success',
   });
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const {
     register,
@@ -224,11 +232,16 @@ export default function StandardizedFieldsPage() {
 
   const loadFields = async () => {
     try {
+      setLoading(true);
       const [fieldsData, categoriesData] = await Promise.all([
-        standardizedFieldService.getStandardizedFields(),
+        standardizedFieldService.getStandardizedFields({
+          page: page + 1,
+          page_size: rowsPerPage
+        }),
         standardizedFieldService.getStandardizedFieldCategories()
       ]);
       setFields(fieldsData.results);
+      setTotalCount(fieldsData.count);
       setCategories(categoriesData.results);
     } catch (error) {
       setSnackbar({
@@ -236,12 +249,23 @@ export default function StandardizedFieldsPage() {
         message: error instanceof Error ? error.message : 'Failed to load fields',
         severity: 'error',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadFields();
-  }, []);
+  }, [page, rowsPerPage]);
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const onSubmit = async (data: FieldFormData) => {
     try {
@@ -272,8 +296,8 @@ export default function StandardizedFieldsPage() {
   };
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h4">Standardized Fields</Typography>
         <Button
           variant="contained"
@@ -297,25 +321,48 @@ export default function StandardizedFieldsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {fields.map((field) => (
-              <TableRow key={field.id}>
-                <TableCell>{field.name}</TableCell>
-                <TableCell>{field.label}</TableCell>
-                <TableCell>{field.field_type}</TableCell>
-                <TableCell>{field.field_category}</TableCell>
-                <TableCell>{field.is_required ? 'Yes' : 'No'}</TableCell>
-                <TableCell>
-                  <IconButton
-                    onClick={() => handleEdit(field)}
-                    size="small"
-                  >
-                    <Edit />
-                  </IconButton>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <CircularProgress />
                 </TableCell>
               </TableRow>
-            ))}
+            ) : fields.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  No fields found
+                </TableCell>
+              </TableRow>
+            ) : (
+              fields.map((field) => (
+                <TableRow key={field.id}>
+                  <TableCell>{field.name}</TableCell>
+                  <TableCell>{field.label}</TableCell>
+                  <TableCell>{field.field_type}</TableCell>
+                  <TableCell>{field.field_category}</TableCell>
+                  <TableCell>{field.is_required ? 'Yes' : 'No'}</TableCell>
+                  <TableCell>
+                    <IconButton
+                      onClick={() => handleEdit(field)}
+                      size="small"
+                    >
+                      <Edit />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={totalCount}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+        />
       </TableContainer>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>

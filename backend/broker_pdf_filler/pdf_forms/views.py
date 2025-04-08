@@ -21,6 +21,11 @@ from rest_framework.pagination import PageNumberPagination
 
 logger = logging.getLogger(__name__)
 
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 # Create your views here.
 
 class FormTemplateViewSet(viewsets.ModelViewSet):
@@ -210,8 +215,7 @@ class StandardizedFieldViewSet(viewsets.ModelViewSet):
     filterset_fields = ['field_type', 'field_category', 'is_required']
     search_fields = ['name', 'description', 'field_definition']
     ordering_fields = ['name', 'field_category', 'created_at']
-    pagination_class = PageNumberPagination
-    page_size = 10
+    pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
         try:
@@ -367,8 +371,7 @@ class StandardizedFieldCategoryViewSet(viewsets.ModelViewSet):
     filterset_fields = ['name']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
-    pagination_class = PageNumberPagination
-    page_size = 10
+    pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
         return StandardizedFieldCategory.objects.all()
