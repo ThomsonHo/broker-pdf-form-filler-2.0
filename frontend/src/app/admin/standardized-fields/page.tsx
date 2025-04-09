@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -156,16 +156,18 @@ export default function StandardizedFieldsPage() {
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error';
+    severity: 'success' | 'error' | 'info' | 'warning';
   }>({
     open: false,
     message: '',
-    severity: 'success',
+    severity: 'info',
   });
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
   const {
     register,
@@ -236,7 +238,9 @@ export default function StandardizedFieldsPage() {
       const [fieldsData, categoriesData] = await Promise.all([
         standardizedFieldService.getStandardizedFields({
           page: page + 1,
-          page_size: rowsPerPage
+          page_size: rowsPerPage,
+          search: debouncedSearchQuery,
+          ordering: 'name'
         }),
         standardizedFieldService.getStandardizedFieldCategories()
       ]);
@@ -254,9 +258,18 @@ export default function StandardizedFieldsPage() {
     }
   };
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     loadFields();
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, debouncedSearchQuery]);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -265,6 +278,11 @@ export default function StandardizedFieldsPage() {
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+    setPage(0); // Reset to first page when searching
   };
 
   const onSubmit = async (data: FieldFormData) => {
@@ -306,6 +324,26 @@ export default function StandardizedFieldsPage() {
         >
           Add Field
         </Button>
+      </Box>
+
+      <Box sx={{ mb: 2 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search by name or label..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          InputProps={{
+            startAdornment: (
+              <Box sx={{ mr: 1, color: 'text.secondary' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </Box>
+            ),
+          }}
+        />
       </Box>
 
       <TableContainer component={Paper}>

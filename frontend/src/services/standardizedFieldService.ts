@@ -83,6 +83,8 @@ export interface PaginatedResponse<T> {
 export interface PaginationParams {
   page?: number;
   page_size?: number;
+  search?: string;
+  ordering?: string;
 }
 
 export interface IStandardizedFieldService {

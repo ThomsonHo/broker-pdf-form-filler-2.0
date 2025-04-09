@@ -213,8 +213,9 @@ class StandardizedFieldViewSet(viewsets.ModelViewSet):
     serializer_class = StandardizedFieldSerializer
     permission_classes = [IsAdminUser]
     filterset_fields = ['field_type', 'field_category', 'is_required']
-    search_fields = ['name', 'description', 'field_definition']
+    search_fields = ['name', 'label', 'description', 'field_definition']
     ordering_fields = ['name', 'field_category', 'created_at']
+    ordering = ['name']  # Default ordering if none specified
     pagination_class = CustomPageNumberPagination
     
     def get_queryset(self):
