@@ -16,12 +16,21 @@ import {
   CircularProgress,
   Divider,
   SelectChangeEvent,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import { Client, createClient, updateClient, fetchClientById } from '../../services/clientService';
+import { 
+  Client, 
+  createClient, 
+  updateClient, 
+  fetchClientById, 
+  getClientFields,
+  ClientField
+} from '../../services/clientService';
 
 interface ClientFormProps {
   clientId?: string;
@@ -31,51 +40,97 @@ interface ClientFormProps {
 
 const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) => {
   const [loading, setLoading] = useState<boolean>(false);
+  const [fieldsLoading, setFieldsLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Client>>({
-    first_name: '',
-    last_name: '',
-    date_of_birth: '',
-    gender: 'M',
-    marital_status: 'single',
+  const [formData, setFormData] = useState<Record<string, any>>({
     id_number: '',
-    nationality: '',
-    phone_number: '',
-    email: '',
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    state: '',
-    postal_code: '',
-    country: '',
-    employer: '',
-    occupation: '',
-    work_address: '',
-    annual_income: undefined,
-    monthly_expenses: undefined,
-    tax_residency: '',
-    payment_method: '',
-    payment_period: '',
     is_active: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [clientFields, setClientFields] = useState<ClientField[]>([]);
 
-  // Load client data if editing
+  // Load client fields and client data
   useEffect(() => {
-    if (clientId) {
-      setLoading(true);
-      fetchClientById(clientId)
-        .then((client) => {
-          setFormData(client);
-          setLoading(false);
-        })
-        .catch((err) => {
-          setError('Failed to load client data. Please try again later.');
-          console.error('Error loading client:', err);
-          setLoading(false);
+    const loadData = async () => {
+      try {
+        // Load field definitions
+        setFieldsLoading(true);
+        const fields = await getClientFields();
+        setClientFields(fields);
+        setFieldsLoading(false);
+        
+        // Initialize form data with default values
+        const initialData: Record<string, any> = { 
+          id_number: '',
+          is_active: true
+        };
+        
+        // Set default values from field definitions
+        fields.forEach(field => {
+          if (field.default_value !== undefined && field.default_value !== null) {
+            initialData[field.name] = field.default_value;
+          } else {
+            // Set empty defaults based on field type
+            switch (field.field_type) {
+              case 'text':
+              case 'email':
+              case 'phone':
+              case 'textarea':
+                initialData[field.name] = '';
+                break;
+              case 'number':
+                initialData[field.name] = null;
+                break;
+              case 'date':
+                initialData[field.name] = '';
+                break;
+              case 'checkbox':
+                initialData[field.name] = false;
+                break;
+              case 'select':
+              case 'radio':
+                initialData[field.name] = '';
+                break;
+              default:
+                initialData[field.name] = '';
+            }
+          }
         });
-    }
+        
+        setFormData(initialData);
+        
+        // If editing, load client data
+        if (clientId) {
+          setLoading(true);
+          const client = await fetchClientById(clientId);
+          
+          // Populate form with client data
+          const clientFormData = {
+            id_number: client.id_number,
+            is_active: client.is_active,
+            ...client.data
+          };
+          
+          // Add any direct fields from client that might not be in data
+          fields.forEach(field => {
+            if (client[field.name] !== undefined) {
+              clientFormData[field.name] = client[field.name];
+            }
+          });
+          
+          setFormData(clientFormData);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Failed to load data. Please try again later.');
+        setLoading(false);
+        setFieldsLoading(false);
+      }
+    };
+    
+    loadData();
   }, [clientId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -108,56 +163,96 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
     }
   };
 
-  const handleDateChange = (date: dayjs.Dayjs | null) => {
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: checked,
+    });
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: '',
+      });
+    }
+  };
+
+  const handleDateChange = (name: string, date: dayjs.Dayjs | null) => {
     if (date && date.isValid()) {
       // Format date as YYYY-MM-DD
       const formattedDate = date.format('YYYY-MM-DD');
       setFormData({
         ...formData,
-        date_of_birth: formattedDate,
+        [name]: formattedDate,
       });
+      // Clear error for this field
+      if (errors[name]) {
+        setErrors({
+          ...errors,
+          [name]: '',
+        });
+      }
     } else {
       // Clear the date if invalid
       setFormData({
         ...formData,
-        date_of_birth: '',
+        [name]: '',
       });
       setErrors({
         ...errors,
-        date_of_birth: 'Please enter a valid date',
+        [name]: 'Please enter a valid date',
       });
     }
   };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    // Required fields
-    if (!formData.first_name) newErrors.first_name = 'First name is required';
-    if (!formData.last_name) newErrors.last_name = 'Last name is required';
-    if (!formData.date_of_birth) newErrors.date_of_birth = 'Date of birth is required';
-    if (!formData.id_number) newErrors.id_number = 'ID number is required';
-    if (!formData.nationality) newErrors.nationality = 'Nationality is required';
-    if (!formData.phone_number && !formData.email) {
-      newErrors.phone_number = 'Either phone number or email is required';
-      newErrors.email = 'Either phone number or email is required';
+    
+    // Validate id_number (required fixed field)
+    if (!formData.id_number) {
+      newErrors.id_number = 'ID number is required';
     }
-    if (!formData.address_line1) newErrors.address_line1 = 'Address line 1 is required';
-    if (!formData.city) newErrors.city = 'City is required';
-    if (!formData.state) newErrors.state = 'State/province is required';
-    if (!formData.postal_code) newErrors.postal_code = 'Postal code is required';
-    if (!formData.country) newErrors.country = 'Country is required';
-
-    // Email format validation
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    // Phone number format validation (basic)
-    if (formData.phone_number && !/^\+?[\d\s-()]+$/.test(formData.phone_number)) {
-      newErrors.phone_number = 'Invalid phone number format';
-    }
-
+    
+    // Validate dynamic fields
+    clientFields.forEach(field => {
+      const value = formData[field.name];
+      
+      // Check required fields
+      if (field.is_required && (value === undefined || value === null || value === '')) {
+        newErrors[field.name] = `${field.label} is required`;
+      }
+      
+      // Field-type specific validation
+      if (value !== undefined && value !== null && value !== '') {
+        switch (field.field_type) {
+          case 'email':
+            // Simple email validation
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+              newErrors[field.name] = `${field.label} must be a valid email`;
+            }
+            break;
+          case 'number':
+            // Number validation
+            if (isNaN(Number(value))) {
+              newErrors[field.name] = `${field.label} must be a valid number`;
+            }
+            break;
+          case 'phone':
+            // Simple phone validation
+            if (!/^\+?[\d\s-()]+$/.test(value)) {
+              newErrors[field.name] = `${field.label} must be a valid phone number`;
+            }
+            break;
+        }
+      }
+      
+      // Apply custom validation rules if defined
+      if (field.validation_rules && Array.isArray(field.validation_rules)) {
+        // Handle custom validation rules
+      }
+    });
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -173,21 +268,27 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
     setError(null);
 
     try {
+      // Prepare data for submission
+      const clientData: Partial<Client> = {
+        id_number: formData.id_number,
+        is_active: formData.is_active
+      };
+      
+      // Add dynamic fields
+      clientFields.forEach(field => {
+        if (formData[field.name] !== undefined) {
+          clientData[field.name] = formData[field.name];
+        }
+      });
+      
       let savedClient: Client;
       
       if (clientId) {
         // Update existing client
-        console.log('Updating client with ID:', clientId);
-        console.log('Form data:', formData);
-        console.log('Update URL:', `/clients/${clientId}/`);
-        savedClient = await updateClient(clientId, formData);
-        console.log('Client updated successfully:', savedClient);
+        savedClient = await updateClient(clientId, clientData);
       } else {
         // Create new client
-        console.log('Creating new client with data:', formData);
-        console.log('Create URL:', '/clients/');
-        savedClient = await createClient(formData);
-        console.log('Client created successfully:', savedClient);
+        savedClient = await createClient(clientData);
       }
 
       if (onSave) {
@@ -195,9 +296,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
       }
     } catch (err: any) {
       console.error('Error saving client:', err);
-      console.error('Error response:', err.response);
-      console.error('Error status:', err.response?.status);
-      console.error('Error data:', err.response?.data);
       
       // Handle different error cases
       if (err.response?.status === 401) {
@@ -220,14 +318,210 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
           setError(errorData?.message || errorData?.detail || 'Invalid data provided. Please check your input.');
         }
       } else {
-        setError(err.response?.data?.message || err.response?.data?.detail || 'Failed to save client. Please try again later.');
+        setError(err.response?.data?.message || err.response?.data?.detail || err.message || 'Failed to save client. Please try again later.');
       }
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  // Render a field based on its type
+  const renderField = (field: ClientField) => {
+    const fieldValue = formData[field.name];
+    const fieldError = errors[field.name] || '';
+    
+    switch (field.field_type) {
+      case 'text':
+      case 'textarea':
+        return (
+          <TextField
+            key={field.name}
+            fullWidth
+            label={field.label}
+            name={field.name}
+            value={fieldValue || ''}
+            onChange={handleChange}
+            error={!!fieldError}
+            helperText={fieldError || field.help_text}
+            required={field.is_required}
+            placeholder={field.placeholder}
+            multiline={field.field_type === 'textarea'}
+            rows={field.field_type === 'textarea' ? 4 : 1}
+            margin="normal"
+          />
+        );
+        
+      case 'email':
+        return (
+          <TextField
+            key={field.name}
+            fullWidth
+            label={field.label}
+            name={field.name}
+            value={fieldValue || ''}
+            onChange={handleChange}
+            error={!!fieldError}
+            helperText={fieldError || field.help_text}
+            required={field.is_required}
+            placeholder={field.placeholder}
+            type="email"
+            margin="normal"
+          />
+        );
+        
+      case 'number':
+        return (
+          <TextField
+            key={field.name}
+            fullWidth
+            label={field.label}
+            name={field.name}
+            value={fieldValue === null ? '' : fieldValue}
+            onChange={handleChange}
+            error={!!fieldError}
+            helperText={fieldError || field.help_text}
+            required={field.is_required}
+            placeholder={field.placeholder}
+            type="number"
+            margin="normal"
+          />
+        );
+        
+      case 'phone':
+        return (
+          <TextField
+            key={field.name}
+            fullWidth
+            label={field.label}
+            name={field.name}
+            value={fieldValue || ''}
+            onChange={handleChange}
+            error={!!fieldError}
+            helperText={fieldError || field.help_text}
+            required={field.is_required}
+            placeholder={field.placeholder}
+            margin="normal"
+          />
+        );
+        
+      case 'date':
+        return (
+          <LocalizationProvider key={field.name} dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label={field.label}
+              value={fieldValue ? dayjs(fieldValue) : null}
+              onChange={(date) => handleDateChange(field.name, date)}
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  error: !!fieldError,
+                  helperText: fieldError || field.help_text,
+                  required: field.is_required,
+                  margin: "normal"
+                }
+              }}
+            />
+          </LocalizationProvider>
+        );
+        
+      case 'select':
+        return (
+          <FormControl 
+            key={field.name}
+            fullWidth 
+            error={!!fieldError}
+            required={field.is_required}
+            margin="normal"
+          >
+            <InputLabel>{field.label}</InputLabel>
+            <Select
+              name={field.name}
+              value={fieldValue || ''}
+              onChange={handleSelectChange}
+              label={field.label}
+            >
+              {field.options && Array.isArray(field.options) && field.options.map((option: any) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>{fieldError || field.help_text}</FormHelperText>
+          </FormControl>
+        );
+        
+      case 'checkbox':
+        return (
+          <FormControl 
+            key={field.name}
+            fullWidth 
+            error={!!fieldError}
+            margin="normal"
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name={field.name}
+                  checked={!!fieldValue}
+                  onChange={handleCheckboxChange}
+                />
+              }
+              label={field.label}
+            />
+            <FormHelperText>{fieldError || field.help_text}</FormHelperText>
+          </FormControl>
+        );
+        
+      default:
+        return (
+          <TextField
+            key={field.name}
+            fullWidth
+            label={field.label}
+            name={field.name}
+            value={fieldValue || ''}
+            onChange={handleChange}
+            error={!!fieldError}
+            helperText={fieldError || field.help_text}
+            required={field.is_required}
+            margin="normal"
+          />
+        );
+    }
+  };
+
+  // Group fields by category for better organization
+  const renderFieldsByCategory = () => {
+    if (clientFields.length === 0) return null;
+    
+    // Group fields by display_category
+    const fieldsByCategory: Record<string, ClientField[]> = {};
+    clientFields.forEach(field => {
+      if (!fieldsByCategory[field.display_category]) {
+        fieldsByCategory[field.display_category] = [];
+      }
+      fieldsByCategory[field.display_category].push(field);
+    });
+    
+    // Render fields by category
+    return Object.entries(fieldsByCategory).map(([category, fields]) => (
+      <Box key={category} sx={{ mb: 4 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          {category}
+        </Typography>
+        <Grid container spacing={2}>
+          {fields.map(field => (
+            <Grid item xs={12} sm={6} key={field.name}>
+              {renderField(field)}
+            </Grid>
+          ))}
+        </Grid>
+        <Divider sx={{ mt: 2 }} />
+      </Box>
+    ));
+  };
+
+  if (loading || fieldsLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
         <CircularProgress />
@@ -248,359 +542,72 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
       )}
 
       <form onSubmit={handleSubmit}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(12, 1fr)',
-            gap: 3,
-          }}
-        >
-          {/* Personal Information Section */}
-          <Box sx={{ gridColumn: 'span 12' }}>
-            <Typography variant="h6" gutterBottom>
-              Personal Information
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="First Name"
-              name="first_name"
-              value={formData.first_name}
-              onChange={handleChange}
-              error={!!errors.first_name}
-              helperText={errors.first_name}
-              required
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Last Name"
-              name="last_name"
-              value={formData.last_name}
-              onChange={handleChange}
-              error={!!errors.last_name}
-              helperText={errors.last_name}
-              required
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                label="Date of Birth"
-                value={formData.date_of_birth ? dayjs(formData.date_of_birth) : null}
-                onChange={handleDateChange}
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    error: !!errors.date_of_birth,
-                    helperText: errors.date_of_birth,
-                    required: true,
-                  },
-                }}
+        {/* Fixed Fields */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Client Identification
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="ID Number"
+                name="id_number"
+                value={formData.id_number || ''}
+                onChange={handleChange}
+                error={!!errors.id_number}
+                helperText={errors.id_number}
+                required
+                margin="normal"
               />
-            </LocalizationProvider>
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <FormControl fullWidth error={!!errors.gender}>
-              <InputLabel>Gender</InputLabel>
-              <Select
-                name="gender"
-                value={formData.gender}
-                onChange={handleSelectChange}
-                label="Gender"
-              >
-                <MenuItem value="M">Male</MenuItem>
-                <MenuItem value="F">Female</MenuItem>
-                <MenuItem value="O">Other</MenuItem>
-              </Select>
-              {errors.gender && <FormHelperText>{errors.gender}</FormHelperText>}
-            </FormControl>
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <FormControl fullWidth error={!!errors.marital_status}>
-              <InputLabel>Marital Status</InputLabel>
-              <Select
-                name="marital_status"
-                value={formData.marital_status}
-                onChange={handleSelectChange}
-                label="Marital Status"
-              >
-                <MenuItem value="single">Single</MenuItem>
-                <MenuItem value="married">Married</MenuItem>
-                <MenuItem value="divorced">Divorced</MenuItem>
-                <MenuItem value="widowed">Widowed</MenuItem>
-              </Select>
-              {errors.marital_status && <FormHelperText>{errors.marital_status}</FormHelperText>}
-            </FormControl>
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="ID Number"
-              name="id_number"
-              value={formData.id_number}
-              onChange={handleChange}
-              error={!!errors.id_number}
-              helperText={errors.id_number}
-              required
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Nationality"
-              name="nationality"
-              value={formData.nationality}
-              onChange={handleChange}
-              error={!!errors.nationality}
-              helperText={errors.nationality}
-              required
-            />
-          </Box>
-
-          {/* Contact Information Section */}
-          <Box sx={{ gridColumn: 'span 12' }}>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-              Contact Information
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Phone Number"
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleChange}
-              error={!!errors.phone_number}
-              helperText={errors.phone_number}
-              required={!formData.email}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              error={!!errors.email}
-              helperText={errors.email}
-              required={!formData.phone_number}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: 'span 12' }}>
-            <TextField
-              fullWidth
-              label="Address Line 1"
-              name="address_line1"
-              value={formData.address_line1}
-              onChange={handleChange}
-              error={!!errors.address_line1}
-              helperText={errors.address_line1}
-              required
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: 'span 12' }}>
-            <TextField
-              fullWidth
-              label="Address Line 2"
-              name="address_line2"
-              value={formData.address_line2}
-              onChange={handleChange}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="City"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              error={!!errors.city}
-              helperText={errors.city}
-              required
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="State/Province"
-              name="state"
-              value={formData.state}
-              onChange={handleChange}
-              error={!!errors.state}
-              helperText={errors.state}
-              required
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Postal Code"
-              name="postal_code"
-              value={formData.postal_code}
-              onChange={handleChange}
-              error={!!errors.postal_code}
-              helperText={errors.postal_code}
-              required
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Country"
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              error={!!errors.country}
-              helperText={errors.country}
-              required
-            />
-          </Box>
-
-          {/* Employment Information Section */}
-          <Box sx={{ gridColumn: 'span 12' }}>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-              Employment Information
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Employer"
-              name="employer"
-              value={formData.employer}
-              onChange={handleChange}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Occupation"
-              name="occupation"
-              value={formData.occupation}
-              onChange={handleChange}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: 'span 12' }}>
-            <TextField
-              fullWidth
-              label="Work Address"
-              name="work_address"
-              value={formData.work_address}
-              onChange={handleChange}
-            />
-          </Box>
-
-          {/* Financial Information Section */}
-          <Box sx={{ gridColumn: 'span 12' }}>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-              Financial Information
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Annual Income"
-              name="annual_income"
-              type="number"
-              value={formData.annual_income || ''}
-              onChange={handleChange}
-              InputProps={{
-                startAdornment: <span>$</span>,
-              }}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Monthly Expenses"
-              name="monthly_expenses"
-              type="number"
-              value={formData.monthly_expenses || ''}
-              onChange={handleChange}
-              InputProps={{
-                startAdornment: <span>$</span>,
-              }}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Tax Residency"
-              name="tax_residency"
-              value={formData.tax_residency}
-              onChange={handleChange}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Payment Method"
-              name="payment_method"
-              value={formData.payment_method}
-              onChange={handleChange}
-            />
-          </Box>
-
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' } }}>
-            <TextField
-              fullWidth
-              label="Payment Period"
-              name="payment_period"
-              value={formData.payment_period}
-              onChange={handleChange}
-            />
-          </Box>
-
-          {/* Form Actions */}
-          <Box sx={{ gridColumn: 'span 12', mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="outlined"
-              onClick={onCancel}
-              sx={{ mr: 1 }}
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth margin="normal">
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="is_active"
+                      checked={!!formData.is_active}
+                      onChange={handleCheckboxChange}
+                    />
+                  }
+                  label="Active Client"
+                />
+              </FormControl>
+            </Grid>
+          </Grid>
+          <Divider sx={{ mt: 2 }} />
+        </Box>
+        
+        {/* Dynamic Fields */}
+        {renderFieldsByCategory()}
+        
+        {/* Form Actions */}
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+          {onCancel && (
+            <Button 
+              onClick={onCancel} 
+              sx={{ mr: 2 }} 
               disabled={saving}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              disabled={saving}
-            >
-              {saving ? <CircularProgress size={24} /> : clientId ? 'Update Client' : 'Add Client'}
-            </Button>
-          </Box>
+          )}
+          <Button 
+            type="submit" 
+            variant="contained" 
+            color="primary"
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <CircularProgress size={24} sx={{ mr: 1 }} />
+                Saving...
+              </>
+            ) : (
+              'Save Client'
+            )}
+          </Button>
         </Box>
       </form>
     </Paper>

@@ -2,34 +2,35 @@ import { api } from './api';
 
 export interface Client {
   id: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  date_of_birth: string;
-  gender: 'M' | 'F' | 'O';
-  marital_status: 'single' | 'married' | 'divorced' | 'widowed';
   id_number: string;
-  nationality: string;
-  phone_number: string;
-  email: string;
-  address_line1: string;
-  address_line2?: string;
-  city: string;
-  state: string;
-  postal_code: string;
-  country: string;
-  full_address: string;
-  employer?: string;
-  occupation?: string;
-  work_address?: string;
-  annual_income?: number;
-  monthly_expenses?: number;
-  tax_residency?: string;
-  payment_method?: string;
-  payment_period?: string;
+  data?: Record<string, any>;
   created_at: string;
   updated_at: string;
   is_active: boolean;
+  // For backward compatibility
+  full_name?: string;
+  full_address?: string;
+  // Dynamic fields will be accessible as properties
+  [key: string]: any;
+}
+
+export interface ClientField {
+  id: string;
+  name: string;
+  label: string;
+  field_type: string;
+  field_category: string;
+  display_category: string;
+  display_order: number;
+  is_required: boolean;
+  is_client_field: boolean;
+  is_core_field: boolean;
+  is_filterable: boolean;
+  options?: any;
+  default_value?: any;
+  placeholder?: string;
+  help_text?: string;
+  validation_rules?: any[];
 }
 
 export interface ClientListResponse {
@@ -42,15 +43,14 @@ export interface ClientListResponse {
 export interface ClientFilters {
   search?: string;
   is_active?: boolean;
-  nationality?: string;
-  country?: string;
-  city?: string;
   start_date?: string;
   end_date?: string;
   name?: string;
   ordering?: string;
   page?: number;
   page_size?: number;
+  // Dynamic filters
+  [key: string]: any;
 }
 
 // Fetch clients with optional filters
@@ -169,5 +169,23 @@ export const exportClients = async (filters: ClientFilters = {}): Promise<Blob> 
   const response = await api.get(`/clients/export/?${params.toString()}`, {
     responseType: 'blob',
   });
+  return response.data;
+};
+
+// Fetch client field definitions
+export const getClientFields = async (): Promise<ClientField[]> => {
+  const response = await api.get('clients/field_definitions/');
+  return response.data;
+};
+
+// Fetch core client fields (displayed in listings)
+export const getCoreClientFields = async (): Promise<ClientField[]> => {
+  const response = await api.get('clients/core_fields/');
+  return response.data;
+};
+
+// Fetch filterable client fields
+export const getFilterableClientFields = async (): Promise<ClientField[]> => {
+  const response = await api.get('clients/filterable_fields/');
   return response.data;
 };  

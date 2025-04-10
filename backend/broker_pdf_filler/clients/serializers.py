@@ -1,49 +1,61 @@
 from rest_framework import serializers
 from .models import Client
+from .services import ClientDataService
 
-class ClientSerializer(serializers.ModelSerializer):
-    """Serializer for the Client model."""
+class DynamicClientSerializer(serializers.ModelSerializer):
+    """Serializer for the Client model with dynamic fields."""
     
     full_name = serializers.CharField(read_only=True)
     full_address = serializers.CharField(read_only=True)
     
     class Meta:
         model = Client
-        fields = [
-            'id', 'user', 'first_name', 'last_name', 'full_name',
-            'date_of_birth', 'gender', 'marital_status', 'id_number',
-            'nationality', 'phone_number', 'email', 'address_line1',
-            'address_line2', 'city', 'state', 'postal_code', 'country',
-            'full_address', 'employer', 'occupation', 'work_address',
-            'annual_income', 'monthly_expenses', 'tax_residency',
-            'payment_method', 'payment_period', 'created_at', 'updated_at',
-            'is_active'
-        ]
+        fields = ['id', 'user', 'id_number', 'data', 'full_name', 'full_address', 'created_at', 'updated_at', 'is_active']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
     
-    def validate_id_number(self, value):
-        """Validate that the ID number is unique."""
-        if self.instance and self.instance.id_number == value:
-            return value
-        if Client.objects.filter(id_number=value).exists():
-            raise serializers.ValidationError("A client with this ID number already exists.")
-        return value
+    def to_representation(self, instance):
+        """Add dynamic fields to the representation."""
+        ret = super().to_representation(instance)
+        
+        # Add convenient access to data fields
+        if 'data' in ret and isinstance(ret['data'], dict):
+            for key, value in ret['data'].items():
+                ret[key] = value
+        
+        return ret
+    
+    def to_internal_value(self, data):
+        """Extract dynamic fields to the data dictionary."""
+        client_fields = {field['name'] for field in ClientDataService.get_client_fields()}
+        dynamic_data = {}
+        input_data = data.copy()
+        
+        # Extract client fields from the input data
+        for field_name in list(input_data.keys()):
+            if field_name in client_fields:
+                dynamic_data[field_name] = input_data.pop(field_name)
+        
+        # Process the rest with the standard serializer
+        internal_data = super().to_internal_value(input_data)
+        
+        # Add the dynamic data
+        if 'data' not in internal_data:
+            internal_data['data'] = {}
+        internal_data['data'].update(dynamic_data)
+        
+        return internal_data
     
     def validate(self, data):
         """Validate the data."""
-        # Ensure email is provided if phone number is not
-        if not data.get('email') and not data.get('phone_number'):
-            raise serializers.ValidationError(
-                "Either email or phone number must be provided."
-            )
+        validated_data = super().validate(data)
         
-        # Validate address fields
-        if data.get('address_line2') and not data.get('address_line1'):
-            raise serializers.ValidationError(
-                "Address line 1 is required when address line 2 is provided."
-            )
+        # If we have dynamic data, validate it
+        if 'data' in validated_data and validated_data['data']:
+            errors = ClientDataService.validate_client_data(validated_data['data'])
+            if errors:
+                raise serializers.ValidationError(errors)
         
-        return data
+        return validated_data
 
 class ClientListSerializer(serializers.ModelSerializer):
     """Serializer for listing clients with minimal fields."""
@@ -52,8 +64,20 @@ class ClientListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Client
-        fields = [
-            'id', 'full_name', 'id_number', 'phone_number', 'email',
-            'city', 'country', 'created_at', 'is_active'
-        ]
-        read_only_fields = ['id', 'created_at'] 
+        fields = ['id', 'id_number', 'full_name', 'created_at', 'is_active']
+        read_only_fields = ['id', 'created_at']
+    
+    def to_representation(self, instance):
+        """Add dynamic core fields to the representation."""
+        ret = super().to_representation(instance)
+        
+        # Add core fields from client data
+        core_fields = ClientDataService.get_core_client_fields()
+        for field in core_fields:
+            field_name = field['name']
+            ret[field_name] = instance.get_field_value(field_name, '')
+        
+        return ret
+
+# For backward compatibility
+ClientSerializer = DynamicClientSerializer 

@@ -47,9 +47,31 @@ class PDFFormFiller:
         value = self.client_data
         for key in system_field.split('.'):
             if isinstance(value, dict):
-                value = value.get(key, "")
+                # Handle dynamic client data stored in 'data' field
+                if key == 'data' and 'data' in value:
+                    value = value['data']
+                else:
+                    value = value.get(key, "")
+            elif hasattr(value, 'data') and isinstance(value.data, dict):
+                # Handle Django model with data JSONField
+                if key in value.data:
+                    value = value.data.get(key, "")
+                # Also try property-based access for backward compatibility
+                elif hasattr(value, key):
+                    value = getattr(value, key, "")
+                else:
+                    value = ""
+            elif hasattr(value, key):
+                # Regular attribute access
+                value = getattr(value, key, "")
             else:
                 return ""
+                
+        # Convert to string, handling None, dates, etc.
+        if value is None:
+            return ""
+        elif isinstance(value, (datetime, date)):
+            return value.strftime('%Y-%m-%d')
         return str(value)
     
     def _fill_with_pypdfform(self, output_path: str) -> bool:

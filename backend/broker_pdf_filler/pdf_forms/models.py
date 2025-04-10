@@ -148,6 +148,16 @@ class StandardizedField(models.Model):
     is_active = models.BooleanField(default=True)  # Optional
     is_system = models.BooleanField(default=False)  # Optional
     metadata = models.JSONField(blank=True, null=True)  # Optional
+    
+    # Client data model specific fields
+    is_client_field = models.BooleanField(default=False, 
+        help_text=_("Whether this field should be stored in client data"))
+    is_core_field = models.BooleanField(default=False, 
+        help_text=_("Whether this is a core field shown in client listings"))
+    is_filterable = models.BooleanField(default=False, 
+        help_text=_("Whether this field can be used for filtering clients"))
+    display_order = models.IntegerField(default=100, 
+        help_text=_("Order to display this field in forms and listings"))
 
     class Meta:
         ordering = ['field_category', 'display_category', 'name']

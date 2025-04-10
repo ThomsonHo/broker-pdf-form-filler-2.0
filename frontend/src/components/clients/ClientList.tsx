@@ -16,7 +16,6 @@ import {
   IconButton,
   Chip,
   Typography,
-  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -25,6 +24,9 @@ import {
   Tooltip,
   CircularProgress,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -33,21 +35,17 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   FileDownload as FileDownloadIcon,
-  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { Client, ClientFilters, fetchClients, exportClients, deleteClient, toggleClientActive } from '../../services/clientService';
+import { Client, ClientFilters, fetchClients, exportClients, deleteClient, toggleClientActive, getCoreClientFields, getFilterableClientFields, ClientField, getClientFields } from '../../services/clientService';
+import ClientForm from './ClientForm';
 
 interface ClientListProps {
   onAddClient: () => void;
-  onEditClient: (clientId: string) => void;
-  onViewClient: (clientId: string) => void;
 }
 
 const ClientList: React.FC<ClientListProps> = ({
   onAddClient,
-  onEditClient,
-  onViewClient,
 }) => {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
@@ -59,6 +57,27 @@ const ClientList: React.FC<ClientListProps> = ({
   const [filters, setFilters] = useState<ClientFilters>({});
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [coreFields, setCoreFields] = useState<ClientField[]>([]);
+  const [filterableFields, setFilterableFields] = useState<ClientField[]>([]);
+  const [allFields, setAllFields] = useState<ClientField[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  const loadFields = React.useCallback(async () => {
+    try {
+      const [coreFieldsData, filterableFieldsData, allFieldsData] = await Promise.all([
+        getCoreClientFields(),
+        getFilterableClientFields(),
+        getClientFields()
+      ]);
+      setCoreFields(coreFieldsData);
+      setFilterableFields(filterableFieldsData);
+      setAllFields(allFieldsData);
+    } catch (err) {
+      console.error('Error loading fields:', err);
+      setError('Failed to load field definitions. Please try again later.');
+    }
+  }, []);
 
   const loadClients = React.useCallback(async () => {
     setLoading(true);
@@ -82,7 +101,10 @@ const ClientList: React.FC<ClientListProps> = ({
     }
   }, [filters, page, rowsPerPage, searchTerm]);
 
-  // Fetch clients when filters, page, or rowsPerPage change
+  useEffect(() => {
+    loadFields();
+  }, [loadFields]);
+
   useEffect(() => {
     loadClients();
   }, [loadClients]);
@@ -131,11 +153,18 @@ const ClientList: React.FC<ClientListProps> = ({
   };
 
   const handleEditClient = (client: Client) => {
-    onEditClient(client.id);
+    setSelectedClient(client);
+    setEditDialogOpen(true);
   };
 
-  const handleViewClient = (client: Client) => {
-    onViewClient(client.id);
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
+    setSelectedClient(null);
+  };
+
+  const handleSaveClient = async (client: Client) => {
+    handleCloseEditDialog();
+    await loadClients();
   };
 
   const handleDeleteClient = async (clientId: string) => {
@@ -196,7 +225,14 @@ const ClientList: React.FC<ClientListProps> = ({
               Clients
             </Typography>
           </Box>
-          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' }, display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 6' }, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportClients}
+            >
+              Export
+            </Button>
             <Button
               variant="contained"
               color="primary"
@@ -252,46 +288,25 @@ const ClientList: React.FC<ClientListProps> = ({
               mb: 2,
             }}
           >
-            <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 4' } }}>
-              <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={filters.is_active?.toString() || ''}
-                  onChange={handleFilterChange('is_active')}
-                  label="Status"
-                >
-                  <MenuItem value="">All</MenuItem>
-                  <MenuItem value="true">Active</MenuItem>
-                  <MenuItem value="false">Inactive</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 4' } }}>
-              <FormControl fullWidth>
-                <InputLabel>Nationality</InputLabel>
-                <Select
-                  value={filters.nationality || ''}
-                  onChange={handleFilterChange('nationality')}
-                  label="Nationality"
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {/* Add nationality options here */}
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ gridColumn: { xs: 'span 12', sm: 'span 4' } }}>
-              <FormControl fullWidth>
-                <InputLabel>Country</InputLabel>
-                <Select
-                  value={filters.country || ''}
-                  onChange={handleFilterChange('country')}
-                  label="Country"
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {/* Add country options here */}
-                </Select>
-              </FormControl>
-            </Box>
+            {filterableFields.map((field) => (
+              <Box key={field.id} sx={{ gridColumn: { xs: 'span 12', sm: 'span 4' } }}>
+                <FormControl fullWidth>
+                  <InputLabel>{field.label}</InputLabel>
+                  <Select
+                    value={filters[field.name]?.toString() || ''}
+                    onChange={handleFilterChange(field.name)}
+                    label={field.label}
+                  >
+                    <MenuItem value="">All</MenuItem>
+                    {field.options?.map((option: any) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            ))}
           </Box>
         )}
 
@@ -299,9 +314,9 @@ const ClientList: React.FC<ClientListProps> = ({
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Phone</TableCell>
+                {coreFields.map((field) => (
+                  <TableCell key={field.id}>{field.label}</TableCell>
+                ))}
                 <TableCell>Status</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -310,9 +325,11 @@ const ClientList: React.FC<ClientListProps> = ({
               {clients && clients.length > 0 ? (
                 clients.map((client) => (
                   <TableRow key={client.id}>
-                    <TableCell>{client.full_name}</TableCell>
-                    <TableCell>{client.email}</TableCell>
-                    <TableCell>{client.phone_number}</TableCell>
+                    {coreFields.map((field) => (
+                      <TableCell key={field.id}>
+                        {client.data?.[field.name] || client[field.name] || ''}
+                      </TableCell>
+                    ))}
                     <TableCell>
                       <Chip
                         label={client.is_active ? 'Active' : 'Inactive'}
@@ -321,11 +338,6 @@ const ClientList: React.FC<ClientListProps> = ({
                       />
                     </TableCell>
                     <TableCell>
-                      <Tooltip title="View">
-                        <IconButton onClick={() => handleViewClient(client)}>
-                          <VisibilityIcon />
-                        </IconButton>
-                      </Tooltip>
                       <Tooltip title="Edit">
                         <IconButton onClick={() => handleEditClient(client)}>
                           <EditIcon />
@@ -341,7 +353,7 @@ const ClientList: React.FC<ClientListProps> = ({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={coreFields.length + 2} align="center">
                     No clients found
                   </TableCell>
                 </TableRow>
@@ -359,6 +371,24 @@ const ClientList: React.FC<ClientListProps> = ({
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Paper>
+
+      <Dialog
+        open={editDialogOpen}
+        onClose={handleCloseEditDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Edit Client</DialogTitle>
+        <DialogContent>
+          {selectedClient && (
+            <ClientForm
+              clientId={selectedClient.id}
+              onSave={handleSaveClient}
+              onCancel={handleCloseEditDialog}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
