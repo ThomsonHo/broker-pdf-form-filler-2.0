@@ -91,6 +91,7 @@ export interface PaginationParams {
 
 export interface IStandardizedFieldService {
   getStandardizedFields(params?: PaginationParams): Promise<PaginatedResponse<StandardizedField>>;
+  getStandardizedField(id: string): Promise<StandardizedField>;
   getStandardizedFieldCategories(params?: PaginationParams): Promise<PaginatedResponse<StandardizedFieldCategory>>;
   getStandardizedFieldsByCategory(category: string): Promise<StandardizedField[]>;
   createStandardizedField(data: CreateStandardizedFieldData): Promise<StandardizedField>;
@@ -106,7 +107,13 @@ export class StandardizedFieldService implements IStandardizedFieldService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = 'forms/';
+    this.baseUrl = '/forms/';
+  }
+
+  // Get a single standardized field
+  async getStandardizedField(id: string): Promise<StandardizedField> {
+    const response = await api.get(`${this.baseUrl}standardized-fields/${id}/`);
+    return response.data;
   }
 
   // Standardized Field methods
@@ -139,8 +146,21 @@ export class StandardizedFieldService implements IStandardizedFieldService {
 
   // Update only the display order of a standardized field
   async updateStandardizedFieldDisplayOrder(id: string, display_order: number): Promise<StandardizedField> {
-    const response = await api.patch(`${this.baseUrl}standardized-fields/${id}/`, { display_order });
-    return response.data;
+    try {
+      // First get the current field data
+      const field = await this.getStandardizedField(id);
+      
+      // Then update with the new display_order
+      const response = await api.put(`${this.baseUrl}standardized-fields/${id}/`, {
+        ...field,
+        display_order
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error updating display order:', error);
+      throw error;
+    }
   }
 
   async deleteStandardizedField(id: string): Promise<void> {

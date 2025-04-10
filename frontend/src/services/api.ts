@@ -21,7 +21,12 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   log('Request interceptor - Token:', token ? 'Present' : 'Missing');
   log('Request URL:', config.url);
-  log('Full URL:', `${config.baseURL}${config.url}`);
+  
+  // Fix the URL logging to properly include the slash between baseURL and url
+  const baseUrlWithSlash = config.baseURL?.endsWith('/') ? config.baseURL : `${config.baseURL}/`;
+  const urlWithoutLeadingSlash = config.url?.startsWith('/') ? config.url.substring(1) : config.url;
+  log('Full URL:', `${baseUrlWithSlash}${urlWithoutLeadingSlash}`);
+  
   log('Request method:', config.method?.toUpperCase());
   log('Request headers:', config.headers);
   log('Request data:', config.data);
@@ -35,7 +40,13 @@ api.interceptors.request.use((config) => {
   
   // Normalize URL
   if (config.url) {
+    // Remove leading slashes
     config.url = config.url.replace(/^\/+/g, '');
+    
+    // Ensure baseURL ends with a slash if needed
+    if (config.baseURL && !config.baseURL.endsWith('/')) {
+      config.baseURL = `${config.baseURL}/`;
+    }
     
     // Don't add trailing slash to action URLs (like check-deletable)
     if (!config.url.includes('?') && !config.url.endsWith('/') && !config.url.includes('/check-deletable')) {
