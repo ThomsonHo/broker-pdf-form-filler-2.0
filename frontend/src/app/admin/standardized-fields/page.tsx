@@ -28,12 +28,15 @@ import {
   CircularProgress,
   Switch,
   FormControlLabel,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { standardizedFieldService, StandardizedField, CreateStandardizedFieldData, UpdateStandardizedFieldData, ValidationRule, RelationshipRule, StandardizedFieldCategory } from '@/services/standardizedFieldService';
 import { Add, Delete, Edit } from '@mui/icons-material';
 import * as yup from 'yup';
+import DisplayOrderManager from '@/components/admin/StandardizedFields/DisplayOrderManager';
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
@@ -119,6 +122,7 @@ const validationSchema = yup.object().shape({
   is_active: yup.boolean(),
   is_system: yup.boolean(),
   metadata: yup.object().default({}),
+  display_order: yup.number().transform((value) => (isNaN(value) ? undefined : value)).nullable(),
 });
 
 type FieldFormData = Omit<CreateStandardizedFieldData, 'options' | 'metadata'> & {
@@ -146,6 +150,7 @@ const defaultValues: FieldFormData = {
   is_active: true,
   is_system: false,
   metadata: {},
+  display_order: 100, // Default display order
 };
 
 export default function StandardizedFieldsPage() {
@@ -168,6 +173,7 @@ export default function StandardizedFieldsPage() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<number>(0);
 
   const {
     register,
@@ -213,6 +219,7 @@ export default function StandardizedFieldsPage() {
       is_active: field.is_active,
       is_system: field.is_system,
       metadata: field.metadata || {},
+      display_order: field.display_order || 100,
     });
     setOpenDialog(true);
   };
@@ -313,6 +320,10 @@ export default function StandardizedFieldsPage() {
     }
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
@@ -326,82 +337,97 @@ export default function StandardizedFieldsPage() {
         </Button>
       </Box>
 
-      <Box sx={{ mb: 2 }}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Search by name or label..."
-          value={searchQuery}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: (
-              <Box sx={{ mr: 1, color: 'text.secondary' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-              </Box>
-            ),
-          }}
-        />
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={activeTab} onChange={handleTabChange} aria-label="standardized fields tabs">
+          <Tab label="Field List" />
+          <Tab label="Display Order" />
+        </Tabs>
       </Box>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Label</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Required</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
-            ) : fields.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  No fields found
-                </TableCell>
-              </TableRow>
-            ) : (
-              fields.map((field) => (
-                <TableRow key={field.id}>
-                  <TableCell>{field.name}</TableCell>
-                  <TableCell>{field.label}</TableCell>
-                  <TableCell>{field.field_type}</TableCell>
-                  <TableCell>{field.field_category}</TableCell>
-                  <TableCell>{field.is_required ? 'Yes' : 'No'}</TableCell>
-                  <TableCell>
-                    <IconButton
-                      onClick={() => handleEdit(field)}
-                      size="small"
-                    >
-                      <Edit />
-                    </IconButton>
-                  </TableCell>
+      {activeTab === 0 ? (
+        <>
+          <Box sx={{ mb: 2 }}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search by name or label..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <Box sx={{ mr: 1, color: 'text.secondary' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  </Box>
+                ),
+              }}
+            />
+          </Box>
+
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Label</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>Required</TableCell>
+                  <TableCell>Display Order</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          component="div"
-          count={totalCount}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={[5, 10, 25, 50]}
-        />
-      </TableContainer>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : fields.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      No fields found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  fields.map((field) => (
+                    <TableRow key={field.id}>
+                      <TableCell>{field.name}</TableCell>
+                      <TableCell>{field.label}</TableCell>
+                      <TableCell>{field.field_type}</TableCell>
+                      <TableCell>{field.field_category}</TableCell>
+                      <TableCell>{field.is_required ? 'Yes' : 'No'}</TableCell>
+                      <TableCell>{field.display_order || 'Not set'}</TableCell>
+                      <TableCell>
+                        <IconButton
+                          onClick={() => handleEdit(field)}
+                          size="small"
+                        >
+                          <Edit />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <TablePagination
+              component="div"
+              count={totalCount}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+            />
+          </TableContainer>
+        </>
+      ) : (
+        <DisplayOrderManager onOrderUpdated={loadFields} />
+      )}
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>
@@ -478,6 +504,15 @@ export default function StandardizedFieldsPage() {
                   ))}
                 </Select>
               </FormControl>
+              
+              <TextField
+                type="number"
+                {...register('display_order')}
+                label="Display Order"
+                helperText="Order to display this field in forms (lower numbers appear first)"
+                fullWidth
+                InputProps={{ inputProps: { min: 1 } }}
+              />
 
               {/* Optional fields - hidden field_definition */}
               <TextField

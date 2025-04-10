@@ -37,6 +37,7 @@ export interface StandardizedField {
   is_active?: boolean;
   is_system?: boolean;
   metadata?: Record<string, any> | null;
+  display_order?: number;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +70,7 @@ export interface CreateStandardizedFieldData {
   is_active?: boolean;
   is_system?: boolean;
   metadata?: Record<string, any> | null;
+  display_order?: number;
 }
 
 export interface UpdateStandardizedFieldData extends Partial<CreateStandardizedFieldData> {}
@@ -90,8 +92,10 @@ export interface PaginationParams {
 export interface IStandardizedFieldService {
   getStandardizedFields(params?: PaginationParams): Promise<PaginatedResponse<StandardizedField>>;
   getStandardizedFieldCategories(params?: PaginationParams): Promise<PaginatedResponse<StandardizedFieldCategory>>;
+  getStandardizedFieldsByCategory(category: string): Promise<StandardizedField[]>;
   createStandardizedField(data: CreateStandardizedFieldData): Promise<StandardizedField>;
   updateStandardizedField(id: string, data: UpdateStandardizedFieldData): Promise<StandardizedField>;
+  updateStandardizedFieldDisplayOrder(id: string, display_order: number): Promise<StandardizedField>;
   deleteStandardizedField(id: string): Promise<void>;
   createStandardizedFieldCategory(data: { name: string; description?: string }): Promise<StandardizedFieldCategory>;
   updateStandardizedFieldCategory(id: string, data: { name: string; description?: string }): Promise<StandardizedFieldCategory>;
@@ -111,6 +115,18 @@ export class StandardizedFieldService implements IStandardizedFieldService {
     return response.data;
   }
 
+  // Get standardized fields by category
+  async getStandardizedFieldsByCategory(category: string): Promise<StandardizedField[]> {
+    const response = await api.get(`${this.baseUrl}standardized-fields/`, { 
+      params: { 
+        display_category: category,
+        ordering: 'display_order',
+        page_size: 100 // Ensure we get all fields in the category
+      } 
+    });
+    return response.data.results;
+  }
+
   async createStandardizedField(data: CreateStandardizedFieldData): Promise<StandardizedField> {
     const response = await api.post(`${this.baseUrl}standardized-fields/`, data);
     return response.data;
@@ -118,6 +134,12 @@ export class StandardizedFieldService implements IStandardizedFieldService {
 
   async updateStandardizedField(id: string, data: UpdateStandardizedFieldData): Promise<StandardizedField> {
     const response = await api.put(`${this.baseUrl}standardized-fields/${id}/`, data);
+    return response.data;
+  }
+
+  // Update only the display order of a standardized field
+  async updateStandardizedFieldDisplayOrder(id: string, display_order: number): Promise<StandardizedField> {
+    const response = await api.patch(`${this.baseUrl}standardized-fields/${id}/`, { display_order });
     return response.data;
   }
 

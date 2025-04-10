@@ -33,6 +33,7 @@ export interface StandardizedField {
   is_active?: boolean;
   is_system?: boolean;
   metadata?: Record<string, any> | null;
+  display_order?: number;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +66,7 @@ export interface CreateStandardizedFieldData {
   is_active?: boolean;
   is_system?: boolean;
   metadata?: Record<string, any> | null;
+  display_order?: number;
 }
 
 export interface UpdateStandardizedFieldData extends Partial<CreateStandardizedFieldData> {} 
