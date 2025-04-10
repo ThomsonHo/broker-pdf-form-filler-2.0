@@ -1,5 +1,8 @@
 from django.core.cache import cache
 from broker_pdf_filler.pdf_forms.models import StandardizedField
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ClientDataService:
     """Service class to handle dynamic client data operations."""
@@ -14,12 +17,23 @@ class ClientDataService:
         fields = cache.get(cache_key)
         
         if fields is None:
-            fields = list(StandardizedField.objects.filter(
-                is_client_field=True, 
-                is_active=True
-            ).order_by('display_category', 'display_order', 'label').values())
-            
-            cache.set(cache_key, fields, cls.CACHE_TIMEOUT)
+            try:
+                query = StandardizedField.objects.filter(
+                    is_client_field=True, 
+                    is_active=True
+                ).order_by('display_category', 'display_order', 'label')
+                
+                logger.info(f"Fetching client fields, found {query.count()} active client fields")
+                fields = list(query.values())
+                
+                if not fields:
+                    logger.warning("No active client fields found. This might indicate a data issue.")
+                
+                cache.set(cache_key, fields, cls.CACHE_TIMEOUT)
+            except Exception as e:
+                logger.error(f"Error fetching client fields: {str(e)}")
+                # Return empty list instead of raising to avoid breaking the UI
+                fields = []
             
         return fields
     
@@ -30,13 +44,24 @@ class ClientDataService:
         fields = cache.get(cache_key)
         
         if fields is None:
-            fields = list(StandardizedField.objects.filter(
-                is_client_field=True,
-                is_core_field=True,
-                is_active=True
-            ).order_by('display_order', 'label').values())
-            
-            cache.set(cache_key, fields, cls.CACHE_TIMEOUT)
+            try:
+                query = StandardizedField.objects.filter(
+                    is_client_field=True,
+                    is_core_field=True,
+                    is_active=True
+                ).order_by('display_order', 'label')
+                
+                logger.info(f"Fetching core client fields, found {query.count()} active core fields")
+                fields = list(query.values())
+                
+                if not fields:
+                    logger.warning("No active core client fields found. This might indicate a data issue.")
+                
+                cache.set(cache_key, fields, cls.CACHE_TIMEOUT)
+            except Exception as e:
+                logger.error(f"Error fetching core client fields: {str(e)}")
+                # Return empty list instead of raising to avoid breaking the UI
+                fields = []
             
         return fields
     
@@ -47,13 +72,24 @@ class ClientDataService:
         fields = cache.get(cache_key)
         
         if fields is None:
-            fields = list(StandardizedField.objects.filter(
-                is_client_field=True,
-                is_filterable=True,
-                is_active=True
-            ).order_by('display_category', 'label').values())
-            
-            cache.set(cache_key, fields, cls.CACHE_TIMEOUT)
+            try:
+                query = StandardizedField.objects.filter(
+                    is_client_field=True,
+                    is_filterable=True,
+                    is_active=True
+                ).order_by('display_category', 'label')
+                
+                logger.info(f"Fetching filterable client fields, found {query.count()} active filterable fields")
+                fields = list(query.values())
+                
+                if not fields:
+                    logger.warning("No active filterable client fields found. This might indicate a data issue.")
+                
+                cache.set(cache_key, fields, cls.CACHE_TIMEOUT)
+            except Exception as e:
+                logger.error(f"Error fetching filterable client fields: {str(e)}")
+                # Return empty list instead of raising to avoid breaking the UI
+                fields = []
             
         return fields
     

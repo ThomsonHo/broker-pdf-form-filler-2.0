@@ -212,9 +212,9 @@ class StandardizedFieldViewSet(viewsets.ModelViewSet):
     queryset = StandardizedField.objects.all()
     serializer_class = StandardizedFieldSerializer
     permission_classes = [IsAdminUser]
-    filterset_fields = ['field_type', 'field_category', 'is_required']
+    filterset_fields = ['field_type', 'field_category', 'is_required', 'is_client_field', 'is_core_field', 'is_filterable', 'is_active']
     search_fields = ['name', 'label', 'description', 'field_definition']
-    ordering_fields = ['name', 'field_category', 'created_at']
+    ordering_fields = ['name', 'field_category', 'created_at', 'display_order']
     ordering = ['name']  # Default ordering if none specified
     pagination_class = CustomPageNumberPagination
     

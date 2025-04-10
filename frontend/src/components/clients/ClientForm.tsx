@@ -327,12 +327,21 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
 
   // Render a field based on its type
   const renderField = (field: ClientField) => {
+    console.log(`Rendering field: ${field.name}, type: ${field.field_type}`);
+    
     const fieldValue = formData[field.name];
     const fieldError = errors[field.name] || '';
+    
+    // If field type is unsupported or undefined, default to text input
+    if (!field.field_type) {
+      console.warn(`Field ${field.name} has no field_type, defaulting to text`);
+      field.field_type = 'text';
+    }
     
     switch (field.field_type) {
       case 'text':
       case 'textarea':
+      case 'string': // Add support for 'string' type
         return (
           <TextField
             key={field.name}
@@ -370,6 +379,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
         );
         
       case 'number':
+      case 'integer': // Add support for 'integer' type
+      case 'float': // Add support for 'float' type
         return (
           <TextField
             key={field.name}
@@ -388,6 +399,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
         );
         
       case 'phone':
+      case 'tel': // Add support for 'tel' type
         return (
           <TextField
             key={field.name}
@@ -400,6 +412,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
             helperText={fieldError || field.help_text}
             required={field.is_required}
             placeholder={field.placeholder}
+            type="tel"
             margin="normal"
           />
         );
@@ -425,6 +438,13 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
         );
         
       case 'select':
+      case 'dropdown': // Add support for 'dropdown' type
+      case 'choice': // Add support for 'choice' type
+        // Create default options if none provided
+        const options = field.options && Array.isArray(field.options) 
+          ? field.options 
+          : [{value: '', label: 'Select an option'}];
+          
         return (
           <FormControl 
             key={field.name}
@@ -440,7 +460,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
               onChange={handleSelectChange}
               label={field.label}
             >
-              {field.options && Array.isArray(field.options) && field.options.map((option: any) => (
+              {options.map((option: any) => (
                 <MenuItem key={option.value} value={option.value}>
                   {option.label}
                 </MenuItem>
@@ -451,6 +471,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
         );
         
       case 'checkbox':
+      case 'boolean': // Add support for 'boolean' type
         return (
           <FormControl 
             key={field.name}
@@ -473,6 +494,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
         );
         
       default:
+        console.warn(`Unknown field type "${field.field_type}" for field "${field.name}", defaulting to text input`);
         return (
           <TextField
             key={field.name}
@@ -492,33 +514,58 @@ const ClientForm: React.FC<ClientFormProps> = ({ clientId, onSave, onCancel }) =
 
   // Group fields by category for better organization
   const renderFieldsByCategory = () => {
-    if (clientFields.length === 0) return null;
+    console.log("Total client fields received:", clientFields.length);
+    
+    if (!clientFields || clientFields.length === 0) {
+      return (
+        <Box sx={{ mt: 2, mb: 4, p: 2, border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: '#f5f5f5' }}>
+          <Typography variant="body1" color="text.secondary" align="center">
+            No standardized fields found. Please contact an administrator to configure client fields.
+          </Typography>
+        </Box>
+      );
+    }
     
     // Group fields by display_category
     const fieldsByCategory: Record<string, ClientField[]> = {};
     clientFields.forEach(field => {
-      if (!fieldsByCategory[field.display_category]) {
-        fieldsByCategory[field.display_category] = [];
+      // Ensure every field has a display category - use field_category as fallback
+      const category = field.display_category || field.field_category || 'Other';
+      
+      if (!fieldsByCategory[category]) {
+        fieldsByCategory[category] = [];
       }
-      fieldsByCategory[field.display_category].push(field);
+      fieldsByCategory[category].push(field);
     });
     
-    // Render fields by category
-    return Object.entries(fieldsByCategory).map(([category, fields]) => (
-      <Box key={category} sx={{ mb: 4 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          {category}
-        </Typography>
-        <Grid container spacing={2}>
-          {fields.map(field => (
-            <Grid item xs={12} sm={6} key={field.name}>
-              {renderField(field)}
-            </Grid>
-          ))}
-        </Grid>
-        <Divider sx={{ mt: 2 }} />
-      </Box>
-    ));
+    console.log("Fields grouped by category:", Object.keys(fieldsByCategory));
+    Object.entries(fieldsByCategory).forEach(([category, fields]) => {
+      console.log(`Category ${category} has ${fields.length} fields`);
+    });
+    
+    // Render fields by category - sorted by display_order
+    return Object.entries(fieldsByCategory).map(([category, fields]) => {
+      // Sort fields by display_order
+      const sortedFields = [...fields].sort((a, b) => 
+        (a.display_order || 999) - (b.display_order || 999)
+      );
+      
+      return (
+        <Box key={category} sx={{ mb: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            {category}
+          </Typography>
+          <Grid container spacing={2}>
+            {sortedFields.map(field => (
+              <Grid item xs={12} sm={6} key={field.name}>
+                {renderField(field)}
+              </Grid>
+            ))}
+          </Grid>
+          <Divider sx={{ mt: 2 }} />
+        </Box>
+      );
+    });
   };
 
   if (loading || fieldsLoading) {

@@ -174,18 +174,42 @@ export const exportClients = async (filters: ClientFilters = {}): Promise<Blob> 
 
 // Fetch client field definitions
 export const getClientFields = async (): Promise<ClientField[]> => {
-  const response = await api.get('clients/field_definitions/');
-  return response.data;
+  try {
+    // First try the client-specific endpoint
+    const response = await api.get('clients/field_definitions/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching from client fields endpoint, trying standardized fields:', error);
+    // Fallback to the standardized fields endpoint with appropriate filter
+    const response = await api.get('forms/standardized-fields/?is_client_field=true&is_active=true&field_category=client');
+    return response.data.results;
+  }
 };
 
 // Fetch core client fields (displayed in listings)
 export const getCoreClientFields = async (): Promise<ClientField[]> => {
-  const response = await api.get('clients/core_fields/');
-  return response.data;
+  try {
+    // First try the client-specific endpoint
+    const response = await api.get('clients/core_fields/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching from core fields endpoint, trying standardized fields:', error);
+    // Fallback to the standardized fields endpoint with appropriate filter
+    const response = await api.get('forms/standardized-fields/?is_client_field=true&is_core_field=true&is_active=true&field_category=client');
+    return response.data.results;
+  }
 };
 
 // Fetch filterable client fields
 export const getFilterableClientFields = async (): Promise<ClientField[]> => {
-  const response = await api.get('clients/filterable_fields/');
-  return response.data;
+  try {
+    // First try the client-specific endpoint
+    const response = await api.get('clients/filterable_fields/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching from filterable fields endpoint, trying standardized fields:', error);
+    // Fallback to the standardized fields endpoint with appropriate filter
+    const response = await api.get('forms/standardized-fields/?is_client_field=true&is_filterable=true&is_active=true&field_category=client');
+    return response.data.results;
+  }
 };  
